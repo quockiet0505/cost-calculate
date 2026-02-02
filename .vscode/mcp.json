@@ -1,0 +1,12 @@
+{
+    "servers": {
+        "encore-mcp": {
+            "args": [
+                "mcp",
+                "run",
+                "--app=energy-cost-platform-b4a2"
+            ],
+            "command": "encore"
+        }
+    }
+}

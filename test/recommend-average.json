@@ -1,0 +1,9 @@
+{
+     "retailer": "energyaustralia",
+     "usage": {
+       "mode": "AVERAGE",
+       "averageMonthlyKwh": 300,
+       "averageMonthlyControlledKwh": 50
+     }
+   }
+   
