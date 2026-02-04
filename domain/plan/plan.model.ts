@@ -1,6 +1,7 @@
 
 import { SolarFIT, TariffPeriod } from "./tariff-period";
 
+// canonical representation of a plan
 export class CanonicalPlan {
   tariffPeriods: TariffPeriod[] = [];
   fees: CanonicalFee[] = [];
@@ -8,9 +9,9 @@ export class CanonicalPlan {
   discounts: CanonicalDiscount[] = [];
 }
 
-/**
- * Fees are applied outside tariff periods
- */
+
+//  Fees are applied outside tariff periods
+
 export interface CanonicalFee {
   type: string;
   term: "FIXED" | "DAILY" | "MONTHLY" | "PERCENT_OF_BILL";
@@ -23,11 +24,7 @@ export interface CanonicalFee {
  * Base vs best-case handled in pricing layer
  */
 export interface CanonicalDiscount {
-  methodUType:
-    | "percentOfBill"
-    | "percentOfUse"
-    | "fixedAmount"
-    | "percentOverThreshold";
+  methodUType:| "percentOfBill"| "percentOfUse"| "fixedAmount"| "percentOverThreshold";
 
   percentOfBill?: { rate: number };
   percentOfUse?: { rate: number };

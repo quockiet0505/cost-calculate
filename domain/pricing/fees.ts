@@ -5,7 +5,10 @@ export function calculateFees({
 }: any) {
   let total = 0;
 
+  // iterate fees
   for (const f of plan.fees || []) {
+
+    // calculate fee based on term
     if (f.term === "FIXED") {
       total += f.amount || 0;
     }

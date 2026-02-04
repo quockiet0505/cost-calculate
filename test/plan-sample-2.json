@@ -2,7 +2,7 @@
      "data": {
          "type": "MARKET",
          "brand": "energyaustralia",
-         "planId": "ENE976997MRE3@EME",
+         "planId": "ENE977000MRE3@EME",
          "fuelType": "ELECTRICITY",
          "brandName": "EnergyAustralia",
          "geography": {
@@ -212,9 +212,9 @@
                  "4581"
              ]
          },
-         "displayName": "Rate Fix - 7 Day TOU + CL 1",
+         "displayName": "QLD Seniors Offer - 7 Day TOU + CL 1",
          "effectiveTo": "2026-02-25T00:00:00.000Z",
-         "lastUpdated": "2026-01-21T01:37:51.014Z",
+         "lastUpdated": "2026-01-21T01:37:45.761Z",
          "customerType": "RESIDENTIAL",
          "effectiveFrom": "2026-01-07T00:00:00.000Z",
          "electricityContract": {
@@ -263,7 +263,7 @@
                  }
              ],
              "terms": "Please refer to our website www.energyaustralia.com.au for full terms and conditions.",
-             "isFixed": true,
+             "isFixed": false,
              "termType": "ONGOING",
              "timeZone": "LOCAL",
              "discounts": [
@@ -273,10 +273,11 @@
                      "displayName": "Guaranteed discount",
                      "methodUType": "percentOfBill",
                      "percentOfBill": {
-                         "rate": "0.08"
+                         "rate": "0.18"
                      }
                  }
              ],
+             "variation": "Prices may be varied in line with your terms and conditions. We will give you notice before any new prices take effect.",
              "incentives": [
                  {
                      "category": "OTHER",
@@ -484,15 +485,12 @@
                      }
                  }
              ],
-             "onExpiryDescription": "The Fixed Rate Period for this plan is 12 months. We will provide you with notice of your options prior to the end of the Fixed Rate Period. Your contract will continue until it is ended by either party.",
+             "onExpiryDescription": "The Benefit Period for this plan is 12 months. We will provide you with notice of your options prior to the end of the Benefit Period. Your contract will continue until it is ended by either party.",
              "additionalFeeInformation": "Additional fees and charges may apply. Please refer to www.energyaustralia.com.au/conditions-and-pricing/other-charges. You can avoid the payment processing fees by paying from your bank account using direct debit or BPay."
          }
      },
      "meta": {},
      "links": {
-         "self": "https://cdr.energymadeeasy.gov.au/energyaustralia/cds-au/v1/energy/plans/ENE976997MRE3@EME"
+         "self": "https://cdr.energymadeeasy.gov.au/energyaustralia/cds-au/v1/energy/plans/ENE977000MRE3@EME"
      }
  }
-
-
- 

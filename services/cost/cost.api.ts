@@ -23,6 +23,7 @@ import { sanitizeMonthlyBreakdown } from "../../utils/sanitize";
 // import { aggregateCostResults } from "./cost.service";
 import { CostRequest, CostResponse } from "./cost.types";
 
+// define cost api
 export const cost = api(
   { method: "POST", path: "/energy/cost", expose: true },
   async (req: CostRequest): Promise<CostResponse> => {
@@ -41,24 +42,27 @@ export const cost = api(
 
     // 3. Pricing (Phase 1 + 2)
     const supply = calculateSupplyCharge({ plan, usageSeries });
-
     const usageChargeSingle = calculateSingleRateUsageCharge({ plan, usageSeries });
     const usageChargeTou = calculateTouUsageCharge({ plan, usageSeries });
 
     //  choose higher-fidelity result automatically
-    const usageCost =
-      usageChargeTou.total > 0 ? usageChargeTou : usageChargeSingle;
+    const usageCost = usageChargeTou.total > 0 ? usageChargeTou : usageChargeSingle;
 
+    // solar feed-in
     const solar = calculateSolarFit({ plan, usageSeries });
 
+    // controlled load usage
     const controlledLoadUsage =
       calculateControlledLoadUsageCharge({ plan, usageSeries });
 
+    // controlled load supply
     const controlledLoadSupply =
       calculateControlledLoadSupplyCharge({ plan, usageSeries });
 
+    // demand charge
     const demand = calculateDemandCharge({ plan, usageSeries });
 
+    // aggregate base costs
     const base = aggregateCostResults({
       supply,
       usage: usageCost,
@@ -76,6 +80,7 @@ export const cost = api(
       })
     );
 
+    // using apply discounts 
     const totals = applyDiscounts({
       plan,
       baseTotal: base.annualBaseTotal + fees,

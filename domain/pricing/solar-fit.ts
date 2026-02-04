@@ -2,6 +2,7 @@ import { resolveTariffPeriod } from "./resolve-tariff-period";
 import { findMatchingTouRate } from "../../utils/tou-utils";
 import { allocateTieredUsage } from "./core/allocate-tiered-usage";
 
+// calculate solar feed-in tariff credits
 export function calculateSolarFit({
   plan,
   usageSeries,
@@ -9,27 +10,33 @@ export function calculateSolarFit({
   let total = 0;
   const monthly: Record<string, number> = {};
 
+  // iterate usage series
   for (const i of usageSeries) {
     if (i.export_kwh <= 0) continue;
 
-    // const tp = resolveTariffPeriod(plan.tariffPeriods, i.timestamp_start);
-    // const fit = tp.solarFIT?.[0];
-    // if (!fit) continue;
+    // find tariff period
     const fit = plan.solarFIT?.[0];
       if (!fit) continue;
       
     let credit = 0;
 
+    // single rates
     if (fit.rateBlockUType === "SINGLE_RATE" && fit.rates) {
+      // allocate usage
       credit = allocateTieredUsage(i.export_kwh, fit.rates);
     }
 
+    // TOU rates
     if (fit.rateBlockUType === "TIME_OF_USE" && fit.timeOfUseRates) {
+
+      // find matching TOU rate
       const r = findMatchingTouRate(
         fit.timeOfUseRates,
         new Date(i.timestamp_start)
       );
       if (r?.rates) {
+
+        // allocate usage
         credit = allocateTieredUsage(i.export_kwh, r.rates);
       }
     }

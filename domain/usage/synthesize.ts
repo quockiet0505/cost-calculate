@@ -6,6 +6,7 @@ import { CanonicalUsageInterval } from "./canonical-usage";
 import { applySolarExport } from "./solar/apply-solar";
 import { applyControlledLoadBehaviour } from "./controlled-load/apply-cl";
 
+// Simulate 12 months of usage based on input model
 export function simulateUsage12Months(
   input: UsageInput
 ): { usageSeries: CanonicalUsageInterval[] } {
@@ -34,22 +35,25 @@ export function simulateUsage12Months(
   if (input.mode === "AVERAGE") {
     return synthesizeFromAverage(input);
   }
-
   throw new Error("Unsupported usage input");
 }
 
-
-
+// synthesize usage from average monthly kWh
 function synthesizeFromAverage(
   input: UsageInput
 ): { usageSeries: CanonicalUsageInterval[] } {
 
+  // extract averages for import + controlled load
   const avg = input.averageMonthlyKwh ?? 0;
   const avgCL = input.averageMonthlyControlledKwh ?? 0;
 
+  // build 12 months of half-hourly intervals
   const intervals: CanonicalUsageInterval[] = [];
+
+  // base date
   const base = getBillingAnchorDate();
 
+  // iterate months
   for (let m = 0; m < 12; m++) {
     const d = new Date(base);
     d.setUTCMonth(d.getUTCMonth() + m);
@@ -57,9 +61,11 @@ function synthesizeFromAverage(
     const month = d.getUTCMonth() + 1;
     const days = new Date(d.getUTCFullYear(), month, 0).getDate();
 
+    // distribute evenly across month
     const perInterval = avg / (days * 48);
     const perIntervalCL = avgCL / (days * 48);
 
+    // iterate days + slots
     for (let day = 1; day <= days; day++) {
       for (let slot = 0; slot < 48; slot++) {
         const start = new Date(Date.UTC(
@@ -87,6 +93,9 @@ function synthesizeFromAverage(
   let usageSeries = applyControlledLoadBehaviour(intervals);
   usageSeries = applySolarExport(usageSeries);
 
+  // after
+  // seasonality, DST, holiday, EV profile 
+  
   return { usageSeries };
 }
 

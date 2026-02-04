@@ -38,18 +38,26 @@ export const recommend = api(
   async (req: RecommendRequest): Promise<RecommendResponse> => {
     const { retailer, usage } = req;
 
+    // fetch plan list
     const planListResponse = await fetchPlanList(retailer);
     const plans = planListResponse.data?.plans || [];
 
+    // iterate plans + cost each
     const results: RecommendResult[] = [];
 
+    // for each plan, fetch detail + cost
     for (const p of plans) {
+      // fetch plan detail
       const detailRes = await fetchPlanDetail(retailer, p.planId);
+
+      // canonicalize plan
       const plan = mapCdrPlanToCanonical(detailRes.data);
 
       // 1) BUILD USAGE PROXY (1 MONTH)
       const usageSeries: CanonicalUsageInterval[] =
         usage.mode === "INTERVAL"
+
+        // if interval data provided, use that
           ? usage.intervals!.map(i => ({
               timestamp_start: i.timestamp_start,
               timestamp_end: i.timestamp_end,
@@ -57,24 +65,36 @@ export const recommend = api(
               export_kwh: i.export_kwh ?? 0,
               controlled_import_kwh: i.controlled_import_kwh ?? 0,
             }))
+
+          // average month proxy
           : buildAverageMonthProxy(usage.averageMonthlyKwh ?? 0,
                                    usage.averageMonthlyControlledKwh ?? 0);
 
-      // 2) PRICING ENGINE (SAME AS COST)
+      // 2) PRICING ENGINE 
+
+      // calculation components
+      // supply
       const supply = calculateSupplyCharge({ plan, usageSeries });
 
+      // usage (TOU vs Single Rate)
       const usageCost =
         plan.tariffPeriods[0]?.usageCharge?.rateBlockUType === "TIME_OF_USE"
           ? calculateTouUsageCharge({ plan, usageSeries })
           : calculateSingleRateUsageCharge({ plan, usageSeries });
 
+      // solar feed-in
       const solar = calculateSolarFit({ plan, usageSeries });
+
+      // controlled load usage
       const controlledLoadUsage =
         calculateControlledLoadUsageCharge({ plan, usageSeries });
+
+      // controlled load supply
       const controlledLoadSupply =
         calculateControlledLoadSupplyCharge({ plan, usageSeries });
       const demand = calculateDemandCharge({ plan, usageSeries });
 
+      // aggregate base costs
       const base = aggregateCostResults({
         supply,
         usage: usageCost,
@@ -84,6 +104,7 @@ export const recommend = api(
         demand,
       });
 
+      // fees + discounts
       const fees = calculateFees({
         plan,
         baseTotal: base.annualBaseTotal,
@@ -114,7 +135,6 @@ export const recommend = api(
 
 
 // Helpers
-
 
 function buildAverageMonthProxy(
   avgMonthlyKwh: number,

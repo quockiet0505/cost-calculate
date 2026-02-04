@@ -1,4 +1,4 @@
-
+// define TariffPeriod interface
 export interface TariffPeriod {
   startDate?: string;
   endDate?: string;
@@ -53,7 +53,7 @@ export interface TariffPeriod {
   solarFIT?: SolarFIT[];
 }
 
-
+// define supporting interfaces
 export interface TieredRate {
   unitPrice: number;
   volume?: number; // kWh
@@ -70,9 +70,9 @@ export interface TouRate {
   rates: TieredRate[];
 }
 
+// demand charge interface
 export interface DemandCharge {
   unitPrice: number;
-
   measurementPeriod: "DAY" | "MONTH";
   chargePeriod: "MONTH";
 
@@ -86,6 +86,7 @@ export interface DemandCharge {
   maxDemand?: number;
 }
 
+// solar feed-in tariff interface
 export interface SolarFIT {
   rateBlockUType: "SINGLE_RATE" | "TIME_OF_USE";
   rates?: TieredRate[];

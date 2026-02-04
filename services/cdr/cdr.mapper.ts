@@ -1,21 +1,27 @@
 import { CanonicalPlan } from "../../domain/plan/plan.model";
-
 import { resolvePlanTimeZone } from "../../utils/timezone";
 
+// map CDR plan format to canonical format
 export function mapCdrPlanToCanonical(raw: any): CanonicalPlan {
   const plan = new CanonicalPlan();
+
+  // basic info
   const contract = raw?.electricityContract ?? {};
 
   plan.tariffPeriods = (contract.tariffPeriod ?? []).map((tp: any) => ({
   startDate: tp.startDate ?? null,
   endDate: tp.endDate ?? null,
+
+  //  set time zone at local
   timeZone: resolvePlanTimeZone(contract.timeZone),
 
+  // normalize fee
   supplyCharge: {
     type: "SINGLE",
     dailyAmount: Number(tp.dailySupplyCharge || 0),
   },
 
+  // extract cost block or TOU
   usageCharge: {
     rateBlockUType: normalizeRateBlockUType(tp.rateBlockUType),
     rates: (tp.rates ?? []).map((r: any) => ({
@@ -25,12 +31,14 @@ export function mapCdrPlanToCanonical(raw: any): CanonicalPlan {
     timeOfUseRates: tp.timeOfUseRates ?? [],
   },
 
+  // controlled load: optional transform from CDR format -> number
   controlledLoad: contract.controlledLoad?.[0]
     ? {
         supplyCharge: Number(
           contract.controlledLoad[0]?.singleRate?.dailySupplyCharge || 0
         ),
         usageCharge: {
+          // rateBlockUType = SINGLE_RATE || ....
           rateBlockUType: "SINGLE_RATE",
           rates:
             contract.controlledLoad[0]?.singleRate?.rates?.map((r: any) => ({
@@ -40,6 +48,7 @@ export function mapCdrPlanToCanonical(raw: any): CanonicalPlan {
       }
     : undefined,
 
+    // demand charges optional transform from CDR format -> number
   demandCharges: (contract.demandCharges ?? []).map((dc: any) => ({
     unitPrice: Number(dc?.rates?.[0]?.unitPrice || 0),
     minDemand: dc.minDemand ? Number(dc.minDemand) : undefined,
@@ -74,6 +83,7 @@ export function mapCdrPlanToCanonical(raw: any): CanonicalPlan {
     return null;
   }).filter(Boolean);
   
+  // normalize fees
   plan.fees =
     (contract.fees ?? []).map((f: any) => ({
       type: f.type,
@@ -82,11 +92,14 @@ export function mapCdrPlanToCanonical(raw: any): CanonicalPlan {
       rate: f.rate != null ? Number(f.rate) : undefined,
     })) ?? [];
 
+    // normalize discounts
   plan.discounts = contract.discounts ?? [];
 
   return plan;
 }
 
+
+// transform CDR rateBlockUType to canonical format
 function normalizeRateBlockUType(raw: any) {
   if (raw === "timeOfUseRates") return "TIME_OF_USE";
   if (raw === "singleRate") return "SINGLE_RATE";

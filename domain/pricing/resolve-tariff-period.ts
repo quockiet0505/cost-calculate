@@ -1,6 +1,7 @@
-// domain/pricing/resolve-tariff-period.ts
+
 import { TariffPeriod } from "../plan/tariff-period";
 
+// resolve the applicable tariff period for a given timestamp
 export function resolveTariffPeriod(
   periods: TariffPeriod[],
   timestamp: string
@@ -11,10 +12,14 @@ export function resolveTariffPeriod(
 
   const t = new Date(timestamp);
 
+  // find matching periods
   const matches = periods.filter(p => {
+
+    // check date range
     const s = p.startDate ? new Date(p.startDate) : null;
     const e = p.endDate ? new Date(p.endDate) : null;
 
+    // out of range
     if (s && t < s) return false;
     if (e && t > e) return false;
     return true;

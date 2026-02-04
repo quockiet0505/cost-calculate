@@ -1,5 +1,7 @@
+// define CDR base URL
 const CDR_BASE = "https://cdr.energymadeeasy.gov.au";
 
+// fetch plan list from CDR
 export async function fetchPlanList(retailer: string): Promise<any> {
   const url = `${CDR_BASE}/${retailer}/cds-au/v1/energy/plans`;
   const res = await fetch(url, {
@@ -16,6 +18,7 @@ export async function fetchPlanList(retailer: string): Promise<any> {
   return res.json();
 }
 
+// fetch plan detail from CDR
 export async function fetchPlanDetail(
   retailer: string,
   planId: string

@@ -7,6 +7,7 @@ export function buildDailySolarCurve(): SolarCurve {
   const sunsetSlot = 36;  // 18:00
   const peakSlot = 24;    // 12:00
 
+  // Build a simple curve
   for (let i = sunriseSlot; i <= sunsetSlot; i++) {
     const distance = Math.abs(i - peakSlot);
     curve[i] = Math.max(
@@ -15,8 +16,10 @@ export function buildDailySolarCurve(): SolarCurve {
     );
   }
 
+  // normalize to total 1.0
   const total = curve.reduce((a, b) => a + b, 0);
 
+  // if total >0, normalize
   if (total > 0) {
     for (let i = 0; i < 48; i++) {
       curve[i] = curve[i] / total;
