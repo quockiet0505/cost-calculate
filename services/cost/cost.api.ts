@@ -9,29 +9,19 @@ import {
   calculateSingleRateUsageCharge,
   calculateTouUsageCharge,
   calculateSolarFit,
+  calculateControlledLoadUsageCharge,
+  calculateControlledLoadSupplyCharge,
+  calculateDemandCharge,
   calculateFees,
-  applyDiscounts
+  applyDiscounts,
+  aggregateCostResults
 } from "../../domain/pricing";
 
-import { aggregateCostResults } from "./cost.service";
+import { safeNumber } from "../../utils/number";
+import { sanitizeMonthlyBreakdown } from "../../utils/sanitize";
+
+// import { aggregateCostResults } from "./cost.service";
 import { CostRequest, CostResponse } from "./cost.types";
-
-function safeNumber(n: unknown): number {
-  const v = Number(n);
-  return Number.isFinite(v) ? v : 0;
-}
-
-function sanitizeMonthlyBreakdown(mb: Record<string, { supply?: number; usage?: number; solar?: number }>): Record<string, { supply: number; usage: number; solar: number }> {
-  const out: Record<string, { supply: number; usage: number; solar: number }> = {};
-  for (const [month, vals] of Object.entries(mb || {})) {
-    out[month] = {
-      supply: safeNumber(vals?.supply),
-      usage: safeNumber(vals?.usage),
-      solar: safeNumber(vals?.solar),
-    };
-  }
-  return out;
-}
 
 export const cost = api(
   { method: "POST", path: "/energy/cost", expose: true },
@@ -39,58 +29,65 @@ export const cost = api(
     const { retailer, planId, usage } = req;
 
     if (!retailer || !planId) {
-     throw new Error("retailer and planId are required for cost calculation");
-   }   
+      throw new Error("retailer and planId are required");
+    }
 
-    //  Fetch + canonicalize plan
+    // 1. Fetch + canonicalize plan
     const planRes = await fetchPlanDetail(retailer, planId);
     const plan = mapCdrPlanToCanonical(planRes.data);
 
-
-    //  Simulate usage
+    // 2. Simulate usage (Model 1 or 2)
     const { usageSeries } = simulateUsage12Months(usage);
 
-    //  Pricing
+    // 3. Pricing (Phase 1 + 2)
     const supply = calculateSupplyCharge({ plan, usageSeries });
 
+    const usageChargeSingle = calculateSingleRateUsageCharge({ plan, usageSeries });
+    const usageChargeTou = calculateTouUsageCharge({ plan, usageSeries });
+
+    //  choose higher-fidelity result automatically
     const usageCost =
-      plan.tariffPeriods[0]?.usageCharge?.rateBlockUType === "TIME_OF_USE"
-        ? calculateTouUsageCharge({ plan, usageSeries })
-        : calculateSingleRateUsageCharge({ plan, usageSeries });
+      usageChargeTou.total > 0 ? usageChargeTou : usageChargeSingle;
 
     const solar = calculateSolarFit({ plan, usageSeries });
+
+    const controlledLoadUsage =
+      calculateControlledLoadUsageCharge({ plan, usageSeries });
+
+    const controlledLoadSupply =
+      calculateControlledLoadSupplyCharge({ plan, usageSeries });
+
+    const demand = calculateDemandCharge({ plan, usageSeries });
 
     const base = aggregateCostResults({
       supply,
       usage: usageCost,
-      solar
+      solar,
+      controlledLoadUsage,
+      controlledLoadSupply,
+      demand,
     });
 
-    //  Fees + discounts
+    // 4. Fees + Discounts
     const fees = safeNumber(
       calculateFees({
         plan,
-        baseTotal: safeNumber(base.annualBaseTotal),
+        baseTotal: base.annualBaseTotal,
       })
     );
 
     const totals = applyDiscounts({
       plan,
-      baseTotal: safeNumber(base.annualBaseTotal) + fees
+      baseTotal: base.annualBaseTotal + fees,
+      usageTotal: usageCost.total,
     });
-
-    //  RETURN 
-    const baseTotal = safeNumber(totals.baseTotal);
-    const bestCaseTotal = safeNumber(totals.bestCaseTotal);
-    const monthlyBreakdown = sanitizeMonthlyBreakdown(base.monthlyBreakdown || {});
 
     return {
       retailer,
       planId,
-      baseTotal,
-      bestCaseTotal,
-      monthlyBreakdown
+      baseTotal: safeNumber(totals.baseTotal),
+      bestCaseTotal: safeNumber(totals.bestCaseTotal),
+      monthlyBreakdown: sanitizeMonthlyBreakdown(base.monthlyBreakdown),
     };
   }
 );
-

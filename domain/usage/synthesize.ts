@@ -1,52 +1,54 @@
-import { UsageInterval } from "./usage.model";
+import { deriveLoadTemplate } from "./templates/derive-templates";
+import { generateFutureUsage } from "./generators/generate-future";
+import { UsageInput } from "./usage.types";
+import { CanonicalUsageInterval } from "./canonical-usage";
 
-const SEASONAL: Record<number, number> = {
-     1: 1.1, 2: 1.1, 3: 1.0,
-     4: 0.95, 5: 0.95, 6: 1.0,
-     7: 1.05, 8: 1.05, 9: 1.0,
-     10: 0.95, 11: 1.0, 12: 1.1
-   };
-   
+import { applySolarExport } from "./solar/apply-solar";
+import { applyControlledLoadBehaviour } from "./controlled-load/apply-cl";
 
-export function simulateUsage12Months(input: any) {
-  if (input.mode === "INTERVAL") return repeat(input.intervals);
+export function simulateUsage12Months(
+  input: UsageInput
+): { usageSeries: CanonicalUsageInterval[] } {
+
+  /**
+   * MODEL 1: INTERVAL INPUT (GROUND TRUTH)
+   */
+  if (input.mode === "INTERVAL" && input.intervals?.length) {
+    return {
+      usageSeries: input.intervals.map(i => ({
+        timestamp_start: i.timestamp_start,
+        timestamp_end: i.timestamp_end,
+        import_kwh: i.import_kwh,
+        export_kwh: i.export_kwh ?? 0,
+        controlled_import_kwh: i.controlled_import_kwh ?? 0,
+      }))
+    };
+  }
+
+  /**
+   * MODEL 2: AVERAGE INPUT (SYNTHETIC)
+   * - Generate intervals
+   * - Apply CL window
+   * - Apply solar curve
+   */
   if (input.mode === "AVERAGE") {
-    return buildFromAverage(
-      input.averageMonthlyKwh,
-      input.averageMonthlyControlledKwh || 0
-    );
-  }
-  throw new Error("Unsupported usage mode");
-}
-
-function repeat(intervals: UsageInterval[]) {
-  const out: UsageInterval[] = [];
-
-  for (let m = 0; m < 12; m++) {
-    for (const src of intervals) {
-      const i = new UsageInterval();
-      const s = new Date(src.timestamp_start);
-      const e = new Date(src.timestamp_end);
-      s.setUTCMonth(s.getUTCMonth() + m);
-      e.setUTCMonth(e.getUTCMonth() + m);
-
-      i.timestamp_start = s.toISOString();
-      i.timestamp_end = e.toISOString();
-      i.import_kwh = src.import_kwh;
-      i.export_kwh = src.export_kwh;
-      i.controlled_import_kwh = src.controlled_import_kwh;
-      i.quality_flags = ["repeated"];
-
-      out.push(i);
-    }
+    return synthesizeFromAverage(input);
   }
 
-  return { usageSeries: out };
+  throw new Error("Unsupported usage input");
 }
 
-function buildFromAverage(avg: number, avgCL: number) {
-  const usageSeries: UsageInterval[] = [];
-  const base = new Date("2026-01-01T00:00:00Z");
+
+
+function synthesizeFromAverage(
+  input: UsageInput
+): { usageSeries: CanonicalUsageInterval[] } {
+
+  const avg = input.averageMonthlyKwh ?? 0;
+  const avgCL = input.averageMonthlyControlledKwh ?? 0;
+
+  const intervals: CanonicalUsageInterval[] = [];
+  const base = getBillingAnchorDate();
 
   for (let m = 0; m < 12; m++) {
     const d = new Date(base);
@@ -54,35 +56,46 @@ function buildFromAverage(avg: number, avgCL: number) {
 
     const month = d.getUTCMonth() + 1;
     const days = new Date(d.getUTCFullYear(), month, 0).getDate();
-    const factor = SEASONAL[month] || 1;
 
-    const perInterval = (avg * factor) / (days * 48);
-    const perIntervalCL = (avgCL * factor) / (days * 48);
+    const perInterval = avg / (days * 48);
+    const perIntervalCL = avgCL / (days * 48);
 
     for (let day = 1; day <= days; day++) {
-      for (let i = 0; i < 48; i++) {
-        const u = new UsageInterval();
-        const s = new Date(Date.UTC(
+      for (let slot = 0; slot < 48; slot++) {
+        const start = new Date(Date.UTC(
           d.getUTCFullYear(),
           d.getUTCMonth(),
           day,
-          Math.floor(i / 2),
-          (i % 2) * 30
+          Math.floor(slot / 2),
+          slot % 2 ? 30 : 0
         ));
-        const e = new Date(s);
-        e.setUTCMinutes(e.getUTCMinutes() + 30);
+        const end = new Date(start);
+        end.setUTCMinutes(end.getUTCMinutes() + 30);
 
-        u.timestamp_start = s.toISOString();
-        u.timestamp_end = e.toISOString();
-        u.import_kwh = perInterval;
-        u.controlled_import_kwh = perIntervalCL;
-        u.export_kwh = 0;
-        u.quality_flags = ["synthetic"];
-
-        usageSeries.push(u);
+        intervals.push({
+          timestamp_start: start.toISOString(),
+          timestamp_end: end.toISOString(),
+          import_kwh: perInterval,
+          export_kwh: 0,
+          controlled_import_kwh: perIntervalCL,
+        });
       }
     }
   }
 
+  // apply synthetic behaviours ONLY here
+  let usageSeries = applyControlledLoadBehaviour(intervals);
+  usageSeries = applySolarExport(usageSeries);
+
   return { usageSeries };
+}
+
+// get current month
+function getBillingAnchorDate(): Date {
+  const now = new Date();
+  return new Date(Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    1, 0, 0, 0
+  ));
 }

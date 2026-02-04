@@ -8,3 +8,4 @@ export * from "./controlled-load-tou";
 export * from "./demand-charge";
 export * from "./fees";
 export * from "./discounts";
+export * from "./aggregate-cost-results";

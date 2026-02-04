@@ -1,77 +1,95 @@
 import { CanonicalPlan } from "../../domain/plan/plan.model";
 
+import { resolvePlanTimeZone } from "../../utils/timezone";
+
 export function mapCdrPlanToCanonical(raw: any): CanonicalPlan {
   const plan = new CanonicalPlan();
-
   const contract = raw?.electricityContract ?? {};
 
-  // ---- Tariff Periods ----
   plan.tariffPeriods = (contract.tariffPeriod ?? []).map((tp: any) => ({
-    startDate: tp.startDate ?? null,
-    endDate: tp.endDate ?? null,
+  startDate: tp.startDate ?? null,
+  endDate: tp.endDate ?? null,
+  timeZone: resolvePlanTimeZone(contract.timeZone),
 
-    supplyCharge: {
-      amount: Number(tp.dailySupplyCharge || 0)
-    },
+  supplyCharge: {
+    type: "SINGLE",
+    dailyAmount: Number(tp.dailySupplyCharge || 0),
+  },
 
-    usageCharge: {
-      rateBlockUType: normalizeRateBlockUType(tp.rateBlockUType),
-      rates: (tp.rates ?? []).map((r: any) => ({
-        unitPrice: Number(r.unitPrice),
-        measureUnit: r.measureUnit
-      })),
-      timeOfUseRates: tp.timeOfUseRates ?? []
-    },
+  usageCharge: {
+    rateBlockUType: normalizeRateBlockUType(tp.rateBlockUType),
+    rates: (tp.rates ?? []).map((r: any) => ({
+      unitPrice: Number(r.unitPrice),
+      volume: r.volume ? Number(r.volume) : undefined,
+    })),
+    timeOfUseRates: tp.timeOfUseRates ?? [],
+  },
 
-    solarFIT: contract.solarFeedInTariff ?? []
-  }));
-
-  // ---- Controlled Load (Phase 2) ----
-  plan.controlledLoad = contract.controlledLoad
+  controlledLoad: contract.controlledLoad?.[0]
     ? {
         supplyCharge: Number(
-          contract.controlledLoad?.[0]?.singleRate?.dailySupplyCharge || 0
+          contract.controlledLoad[0]?.singleRate?.dailySupplyCharge || 0
         ),
         usageCharge: {
           rateBlockUType: "SINGLE_RATE",
           rates:
-            contract.controlledLoad?.[0]?.singleRate?.rates?.map((r: any) => ({
+            contract.controlledLoad[0]?.singleRate?.rates?.map((r: any) => ({
               unitPrice: Number(r.unitPrice),
-              measureUnit: r.measureUnit
-            })) ?? []
-        }
+            })) ?? [],
+        },
       }
-    : null;
+    : undefined,
 
-  // ---- Demand Charges (Phase 2) ----
-  plan.demandCharges = (contract.demandCharges ?? []).map((dc: any) => ({
+  demandCharges: (contract.demandCharges ?? []).map((dc: any) => ({
     unitPrice: Number(dc?.rates?.[0]?.unitPrice || 0),
-    minDemand: dc.minDemand ? Number(dc.minDemand) : null,
-    maxDemand: dc.maxDemand ? Number(dc.maxDemand) : null,
-    measurementPeriod: dc.measurementPeriod || "P30M",
-    chargePeriod: dc.chargePeriod || "P1M",
-    timeWindows: dc.timeOfUse || []
-  }));
+    minDemand: dc.minDemand ? Number(dc.minDemand) : undefined,
+    maxDemand: dc.maxDemand ? Number(dc.maxDemand) : undefined,
+    measurementPeriod: "MONTH",
+    chargePeriod: "MONTH",
+    timeWindows: dc.timeOfUse || [],
+  })),
+}));
+;
 
-  // ---- Fees ----
-  plan.fees = (contract.fees ?? []).map((f: any) => ({
-    type: f.type,
-    term: f.term,
-    amount: f.amount != null ? Number(f.amount) : null,
-    rate: f.rate != null ? Number(f.rate) : null
-  }));
+  // plan.solarFIT = contract.solarFeedInTariff ?? [];
+  plan.solarFIT = (contract.solarFeedInTariff ?? []).map((fit: any) => {
+    // SINGLE TARIFF 
+    if (fit.tariffUType === "singleTariff" && fit.singleTariff?.rates) {
+      return {
+        rateBlockUType: "SINGLE_RATE",
+        rates: fit.singleTariff.rates.map((r: any) => ({
+          unitPrice: Number(r.unitPrice),
+        })),
+      };
+    }
+  
+    // TIME OF USE FIT 
+    if (fit.tariffUType === "timeOfUseTariff" && fit.timeOfUseTariff?.timeOfUseRates) {
+      return {
+        rateBlockUType: "TIME_OF_USE",
+        timeOfUseRates: fit.timeOfUseTariff.timeOfUseRates,
+      };
+    }
+  
+    return null;
+  }).filter(Boolean);
+  
+  plan.fees =
+    (contract.fees ?? []).map((f: any) => ({
+      type: f.type,
+      term: f.term,
+      amount: f.amount != null ? Number(f.amount) : undefined,
+      rate: f.rate != null ? Number(f.rate) : undefined,
+    })) ?? [];
 
-  // ---- Discounts ----
   plan.discounts = contract.discounts ?? [];
 
   return plan;
 }
 
-// ---- Helpers ----
-function normalizeRateBlockUType(raw: any): string {
-  if (!raw) return "UNKNOWN";
+function normalizeRateBlockUType(raw: any) {
   if (raw === "timeOfUseRates") return "TIME_OF_USE";
   if (raw === "singleRate") return "SINGLE_RATE";
   if (raw === "blockRates") return "BLOCK";
-  return raw;
+  return "SINGLE_RATE";
 }
