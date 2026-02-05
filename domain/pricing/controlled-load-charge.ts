@@ -18,14 +18,14 @@ export function calculateControlledLoadUsageCharge({
   for (const i of usageSeries) {
     if ((i.controlled_import_kwh || 0) <= 0) continue;
 
-    const tp = resolveTariffPeriod(plan.tariffPeriods, i.timestamp_start);
-    const timeZone = tp.timeZone || "Australia/Sydney";
+    const tp = resolveTariffPeriod(plan.tariffPeriods, i.localDate);
+    const planTimeZone = plan.timeZone || "Australia/Sydney";
     const cl = tp.controlledLoad;
 
     if (!cl?.usageCharge) continue;
 
     // get month key from timestamp
-    const { monthKey } = getLocalParts(new Date(i.timestamp_start), timeZone);
+    const monthKey = i.localMonth; // "YYYY-MM"
 
     let rates = [];
     let type = "SINGLE";
@@ -38,8 +38,10 @@ export function calculateControlledLoadUsageCharge({
       // find rate matching timestamp
       const r = findMatchingTouRate(
         cl.usageCharge.timeOfUseRates || [],
-        new Date(i.timestamp_start),
-        timeZone
+        { 
+          weekday: i.weekday, 
+          time: i.startTime 
+        }
       );
       if (r?.rates) {
         rates = r.rates;
@@ -57,7 +59,7 @@ export function calculateControlledLoadUsageCharge({
       kwh: i.controlled_import_kwh,
       tiers: rates,
       timestamp: i.timestamp_start,
-      timeZone,
+      timeZone:planTimeZone,
       tariffKey,     
       accumulator,   
     });
