@@ -5,26 +5,48 @@ import { CanonicalUsageInterval } from "./canonical-usage";
 
 import { applySolarExport } from "./solar/apply-solar";
 import { applyControlledLoadBehaviour } from "./controlled-load/apply-cl";
+import { applySeasonality } from "./seasonality/apply-seasonality";
+import { applyHolidayBehaviour } from "./calendar/apply-holiday";
+
+import { normalizeIntervals } from "./normalize/normalize-intervals";
 
 // Simulate 12 months of usage based on input model
 export function simulateUsage12Months(
-  input: UsageInput
+  input: UsageInput,
 ): { usageSeries: CanonicalUsageInterval[] } {
 
   /**
    * MODEL 1: INTERVAL INPUT (GROUND TRUTH)
    */
+
+  // 1. Canonicalize input intervals
   if (input.mode === "INTERVAL" && input.intervals?.length) {
-    return {
-      usageSeries: input.intervals.map(i => ({
+
+    let usageSeries: CanonicalUsageInterval[] =
+      input.intervals.map(i => ({
         timestamp_start: i.timestamp_start,
         timestamp_end: i.timestamp_end,
         import_kwh: i.import_kwh,
         export_kwh: i.export_kwh ?? 0,
         controlled_import_kwh: i.controlled_import_kwh ?? 0,
-      }))
-    };
+      }));
+  
+    //  STEP 1: normalize UTC -> LOCAL (Model 1 core)
+    const timeZone = "Australia/Sydney"; // Model 1 assumption
+    usageSeries = normalizeIntervals(usageSeries, timeZone);
+  
+    //  STEP 2: derive template AFTER normalize
+    const template = deriveLoadTemplate(usageSeries);
+  
+    //  STEP 3: behaviours (LOCAL based)
+    usageSeries = applyHolidayBehaviour(usageSeries, template);
+    usageSeries = applySeasonality(usageSeries);
+    // usageSeries = applySolarExport(usageSeries);
+    usageSeries = applyControlledLoadBehaviour(usageSeries);
+  
+    return { usageSeries };
   }
+  
 
   /**
    * MODEL 2: AVERAGE INPUT (SYNTHETIC)

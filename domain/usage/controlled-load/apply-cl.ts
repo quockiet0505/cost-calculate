@@ -1,33 +1,26 @@
-// domain/usage/controlled-load/apply-cl.ts
-
 import { CanonicalUsageInterval } from "../canonical-usage";
-import { getHalfHourIndex } from "../normalize/interval-utils";
 import { isControlledLoadActive } from "./cl-windows";
 
-//  Apply controlled load behaviour to usage intervals
-
+/**
+ * Apply controlled load windows using LOCAL time
+ */
 export function applyControlledLoadBehaviour(
   intervals: CanonicalUsageInterval[]
 ): CanonicalUsageInterval[] {
 
-  const result: CanonicalUsageInterval[] = [];
+  return intervals.map(interval => {
+    if (!interval.startTime) return interval;
 
-  for (const interval of intervals) {
-    const date = new Date(interval.timestamp_start);
-    const slot = getHalfHourIndex(date);
+    const [hh, mm] = interval.startTime.split(":").map(Number);
+    const slot = hh * 2 + (mm >= 30 ? 1 : 0);
 
-    // CL only allowed in active windows
     if (!isControlledLoadActive(slot)) {
-      result.push({
+      return {
         ...interval,
         controlled_import_kwh: 0,
-      });
-      continue;
+      };
     }
 
-    // inside CL window -> keep value
-    result.push(interval);
-  }
-
-  return result;
+    return interval;
+  });
 }

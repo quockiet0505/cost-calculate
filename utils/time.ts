@@ -11,6 +11,8 @@ export function getLocalParts(
      dateKey: string; // YYYY-MM-DD
      monthKey: string; // YYYY-MM
    } {
+
+    // use Intl.DateTimeFormat to get local parts
      const parts = new Intl.DateTimeFormat("en-AU", {
        timeZone,
        weekday: "short",

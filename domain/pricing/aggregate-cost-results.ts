@@ -31,10 +31,10 @@ export function aggregateCostResults({
        const total =
          row.supply +
          row.usage +
-         row.solar +
          row.controlledLoadUsage +
          row.controlledLoadSupply +
-         row.demand;
+         row.demand -
+         row.solar;
    
        monthlyBreakdown[m] = { ...row, total };
        annualBaseTotal += total;

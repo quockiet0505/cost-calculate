@@ -1,6 +1,8 @@
 import { resolveTariffPeriod } from "./resolve-tariff-period";
 import { findMatchingTouRate } from "../../utils/tou-utils";
-import { allocateTieredUsage } from "./core/allocate-tiered-usage";
+import { allocateTieredUsageWithPeriod } from "./core/allocate-tiered-usage";
+import { TierAccumulator } from "./core/tier-accumulator";
+import { getLocalParts } from "../../utils/time";
 
 // calculate time-of-use usage charge
 export function calculateTouUsageCharge({
@@ -9,32 +11,51 @@ export function calculateTouUsageCharge({
 }: any) {
   let total = 0;
   const monthly: Record<string, number> = {};
-
+  
+  let accumulator = new TierAccumulator();
   // iterate usage series
   for (const i of usageSeries) {
     if (i.import_kwh <= 0) continue;
 
     // find tariff period
-    const tp = resolveTariffPeriod(plan.tariffPeriods, i.timestamp_start);
+    const tp = resolveTariffPeriod(
+      plan.tariffPeriods,
+      i.localDate!
+    );
+
+    let timeZone = tp.timeZone || "Australia/Sydney";
+
+    // get TOU rates
     const touRates = tp.usageCharge?.timeOfUseRates || [];
     if (!touRates.length) continue;
 
     // find matching TOU rate
+    // 2. match TOU bằng canonical fields
     const rate = findMatchingTouRate(
       touRates,
-      new Date(i.timestamp_start),
-      tp.timeZone || "Australia/Sydney"
+      {
+        weekday: i.weekday!,
+        time: i.startTime!,
+      }
     );
-
     
     if (!rate?.rates?.length) continue;
 
+    const tariffKey = `TOU|${tp.startDate ?? "ALL"}-${tp.endDate ?? "ALL"}|${rate.type}`;
+
     // allocate usage
-    const cost = allocateTieredUsage(i.import_kwh, rate.rates);
-    const m = i.timestamp_start.slice(0, 7);
+    const cost = allocateTieredUsageWithPeriod({
+      kwh: i.import_kwh,
+      tiers: rate.rates,
+      timestamp: i.timestamp_start,
+      timeZone,
+      tariffKey,
+      accumulator,
+    });
+    const { monthKey } = getLocalParts(new Date(i.timestamp_start), timeZone);
 
     total += cost;
-    monthly[m] = (monthly[m] || 0) + cost;
+    monthly[monthKey] = (monthly[monthKey] || 0) + cost;
   }
 
   return { total, monthly };

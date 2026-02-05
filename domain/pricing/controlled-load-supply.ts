@@ -1,6 +1,7 @@
 import { resolveTariffPeriod } from "./resolve-tariff-period";
+import { getLocalParts } from "../../utils/time"; 
 
-// calculate controlled load supply charge
+// calculate controlled load supply charge (daily)
 export function calculateControlledLoadSupplyCharge({
   plan,
   usageSeries,
@@ -9,23 +10,28 @@ export function calculateControlledLoadSupplyCharge({
   const monthly: Record<string, number> = {};
   let total = 0;
 
-  // iterate usage series
   for (const i of usageSeries) {
     if ((i.controlled_import_kwh || 0) <= 0) continue;
 
-    const day = i.timestamp_start.slice(0, 10);
-    if (chargedDays.has(day)) continue;
-    chargedDays.add(day);
-
     // find tariff period
     const tp = resolveTariffPeriod(plan.tariffPeriods, i.timestamp_start);
+    const timeZone = tp.timeZone || "Australia/Sydney";
 
-    // get daily supply charge
+    // get date and month keys
+    const { dateKey, monthKey } = getLocalParts(
+      new Date(i.timestamp_start),
+      timeZone
+    );
+
+    // skip if already charged for this day
+    if (chargedDays.has(dateKey)) continue;
+    chargedDays.add(dateKey);
+
     const daily = tp.controlledLoad?.supplyCharge ?? 0;
 
-    const m = day.slice(0, 7);
+    // accumulate totals
     total += daily;
-    monthly[m] = (monthly[m] || 0) + daily;
+    monthly[monthKey] = (monthly[monthKey] || 0) + daily;
   }
 
   return { total, monthly };

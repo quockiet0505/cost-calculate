@@ -1,39 +1,41 @@
-
 import { TariffPeriod } from "../plan/tariff-period";
 
-// resolve the applicable tariff period for a given timestamp
+
+//  Resolve applicable tariff period for a LOCAL date
+//  - Supports ISO date (YYYY-MM-DD)
+//  - Supports seasonal MM-DD (recurring yearly)
+
 export function resolveTariffPeriod(
   periods: TariffPeriod[],
-  timestamp: string
+  localDate: string // YYYY-MM-DD
 ): TariffPeriod {
   if (!periods?.length) {
     throw new Error("No tariff periods defined");
   }
 
-  const t = new Date(timestamp);
+  const mmdd = localDate.slice(5); // MM-DD
 
-  // find matching periods
   const matches = periods.filter(p => {
+    if (!p.startDate || !p.endDate) return true;
 
-    // check date range
-    const s = p.startDate ? new Date(p.startDate) : null;
-    const e = p.endDate ? new Date(p.endDate) : null;
+    // absolute ISO range
+    if (p.startDate.length === 10) {
+      return localDate >= p.startDate && localDate <= p.endDate;
+    }
 
-    // out of range
-    if (s && t < s) return false;
-    if (e && t > e) return false;
-    return true;
+    // seasonal MM-DD range
+    const start = p.startDate;
+    const end = p.endDate;
+
+    // normal season (e.g. 01-01 → 06-30)
+    if (start <= end) {
+      return mmdd >= start && mmdd <= end;
+    }
+
+    // wrapped season (e.g. 07-01 → 06-30)
+    return mmdd >= start || mmdd <= end;
   });
 
-  if (!matches.length) {
-    // deterministic fallback (guide-approved)
-    return periods[0];
-  }
-
-  // pick most specific (latest startDate wins)
-  return matches.sort(
-    (a, b) =>
-      new Date(b.startDate || 0).getTime() -
-      new Date(a.startDate || 0).getTime()
-  )[0];
+  // deterministic fallback (guide-approved)
+  return matches.length ? matches[0] : periods[0];
 }

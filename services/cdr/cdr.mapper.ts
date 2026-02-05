@@ -9,9 +9,9 @@ export function mapCdrPlanToCanonical(raw: any): CanonicalPlan {
   const contract = raw?.electricityContract ?? {};
 
   plan.tariffPeriods = (contract.tariffPeriod ?? []).map((tp: any) => ({
-  startDate: tp.startDate ?? null,
-  endDate: tp.endDate ?? null,
-
+  startDate: tp.startDate,
+  endDate: tp.endDate,
+    
   //  set time zone at local
   timeZone: resolvePlanTimeZone(contract.timeZone),
 
@@ -49,14 +49,14 @@ export function mapCdrPlanToCanonical(raw: any): CanonicalPlan {
     : undefined,
 
     // demand charges optional transform from CDR format -> number
-  demandCharges: (contract.demandCharges ?? []).map((dc: any) => ({
-    unitPrice: Number(dc?.rates?.[0]?.unitPrice || 0),
-    minDemand: dc.minDemand ? Number(dc.minDemand) : undefined,
-    maxDemand: dc.maxDemand ? Number(dc.maxDemand) : undefined,
-    measurementPeriod: "MONTH",
-    chargePeriod: "MONTH",
-    timeWindows: dc.timeOfUse || [],
-  })),
+    demandCharges: (tp.demandCharges ?? []).map((dc: any) => ({
+      unitPrice: Number(dc?.rates?.[0]?.unitPrice || 0),
+      minDemand: dc.minDemand ? Number(dc.minDemand) : undefined,
+      maxDemand: dc.maxDemand ? Number(dc.maxDemand) : undefined,
+      measurementPeriod: dc.measurementPeriod ?? "MONTH",
+      chargePeriod: "MONTH",
+      timeWindows: dc.timeOfUse ?? [],
+    })),
 }));
 ;
 
@@ -106,3 +106,5 @@ function normalizeRateBlockUType(raw: any) {
   if (raw === "blockRates") return "BLOCK";
   return "SINGLE_RATE";
 }
+
+

@@ -1,44 +1,48 @@
-
 import { isPublicHoliday } from "./holidays.au";
 import { WeeklyLoadTemplate } from "../templates/template.types";
 import { CanonicalUsageInterval } from "../canonical-usage";
-import { getHalfHourIndex } from "../normalize/interval-utils";  
 
-// apply holiday behavior to usage intervals
-
-// public holiday behaves like Sunday
-// opt daytime simple
-
+/**
+ * Public holiday behaves like Sunday
+ * MUST use canonical local fields
+ */
 export function applyHolidayBehaviour(
-     intervals: CanonicalUsageInterval[],
-     template: WeeklyLoadTemplate
+  intervals: CanonicalUsageInterval[],
+  template: WeeklyLoadTemplate
 ): CanonicalUsageInterval[] {
 
-     const result: CanonicalUsageInterval[] = [];
+  const result: CanonicalUsageInterval[] = [];
 
-     // accumulator for holidays
-     for( const interval of intervals){
-          const date = new Date(interval.timestamp_start);
+  for (const interval of intervals) {
+    if (!interval.localDate || !interval.startTime) {
+      result.push(interval);
+      continue;
+    }
 
-          // not a public day -> keep original
-          if(!isPublicHoliday(date)){
-               result.push(interval);
-               continue;
-          }
+    // local-date based holiday check
+    if (!isPublicHoliday(interval.localDate)) {
+      result.push(interval);
+      continue;
+    }
 
-          // public holiday -> apply Sunday
-          // treat public holiday as Sunday
-          const slot = getHalfHourIndex(date);
-          const sunday = template['SUN'];
+    const sunday = template["SUN"];
+    if (!sunday) {
+      result.push(interval);
+      continue;
+    }
 
-          result.push({
-               timestamp_end: interval.timestamp_end,
-               timestamp_start: interval.timestamp_start,
-               import_kwh: sunday.import[slot],
-               export_kwh: sunday.export[slot],
-               controlled_import_kwh: sunday.controlledLoad[slot],
-          })
-     }
-     return result;
+    // local half-hour slot
+    const [hh, mm] = interval.startTime.split(":").map(Number);
+    const slot = hh * 2 + (mm >= 30 ? 1 : 0);
+
+    result.push({
+      ...interval,
+      import_kwh: sunday.import[slot],
+      export_kwh: sunday.export[slot],
+      controlled_import_kwh: sunday.controlledLoad[slot],
+      weekday: "SUN",
+    });
+  }
+
+  return result;
 }
-

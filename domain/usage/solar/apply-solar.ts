@@ -1,34 +1,26 @@
-
 import { CanonicalUsageInterval } from "../canonical-usage";
 import { buildDailySolarCurve } from "./solar-curve";
-import { getHalfHourIndex } from "../normalize/interval-utils";
 
-// apply solar generation to usage intervals
-
+/**
+ * Apply solar export using LOCAL time slots
+ */
 export function applySolarExport(
-     intervals: CanonicalUsageInterval[]
-): CanonicalUsageInterval[]{
-     const curve = buildDailySolarCurve();
+  intervals: CanonicalUsageInterval[]
+): CanonicalUsageInterval[] {
 
-     // group intervals by day
-     const result: CanonicalUsageInterval[] = [];
+  const curve = buildDailySolarCurve();
 
-     for(const interval of intervals){
-          const date = new Date(interval.timestamp_start);
-          const slot = getHalfHourIndex(date);
+  return intervals.map(interval => {
+    if (!interval.startTime || interval.export_kwh <= 0) {
+      return interval;
+    }
 
-          // if not export original , keep zero
-          if(!interval.export_kwh || interval.export_kwh <=0){
-               result.push(interval);
-               continue;
-          }
+    const [hh, mm] = interval.startTime.split(":").map(Number);
+    const slot = hh * 2 + (mm >= 30 ? 1 : 0);
 
-          // redistribute export using daylight curve
-          const adjustedExport = interval.export_kwh * curve[slot];
-          result.push({
-               ...interval,
-               export_kwh: adjustedExport,
-          });
-     }
-     return result;
+    return {
+      ...interval,
+      export_kwh: interval.export_kwh * curve[slot],
+    };
+  });
 }

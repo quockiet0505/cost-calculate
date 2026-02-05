@@ -46,7 +46,19 @@ export const cost = api(
     const usageChargeTou = calculateTouUsageCharge({ plan, usageSeries });
 
     //  choose higher-fidelity result automatically
-    const usageCost = usageChargeTou.total > 0 ? usageChargeTou : usageChargeSingle;
+    // const usageCost = usageChargeTou.total > 0 ? usageChargeTou : usageChargeSingle;
+    let usageCost;
+
+    const firstTariff = plan.tariffPeriods[0];
+    const usageChargeType = firstTariff?.usageCharge?.rateBlockUType;
+
+    if(usageChargeType === "TIME_OF_USE"){ 
+      usageCost = calculateTouUsageCharge({ plan, usageSeries });
+    }else{
+      // single rate
+      usageCost = calculateSingleRateUsageCharge({ plan, usageSeries });
+    }
+
 
     // solar feed-in
     const solar = calculateSolarFit({ plan, usageSeries });

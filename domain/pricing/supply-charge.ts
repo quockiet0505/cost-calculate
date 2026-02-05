@@ -1,26 +1,29 @@
+
+import { getLocalParts } from "../../utils/time";
 import { resolveTariffPeriod } from "./resolve-tariff-period";
 
-// calculate supply charge
+// calculate supply charge (daily)
 export function calculateSupplyCharge({ plan, usageSeries }: any) {
   const chargedDays = new Set<string>();
   const monthly: Record<string, number> = {};
   let total = 0;
 
-  // iterate usage series
   for (const i of usageSeries) {
-    const day = i.timestamp_start.slice(0, 10);
-
-    // avoid double charging for the same day
-    if (chargedDays.has(day)) continue;
-    chargedDays.add(day);
-
-    // find tariff period
     const tp = resolveTariffPeriod(plan.tariffPeriods, i.timestamp_start);
+    const timeZone = tp.timeZone || "Australia/Sydney";
+
+    const { dateKey, monthKey } = getLocalParts(
+      new Date(i.timestamp_start),
+      timeZone
+    );
+
+    if (chargedDays.has(dateKey)) continue;
+    chargedDays.add(dateKey);
+
     const daily = tp.supplyCharge?.dailyAmount ?? 0;
 
-    const m = day.slice(0, 7);
     total += daily;
-    monthly[m] = (monthly[m] || 0) + daily;
+    monthly[monthKey] = (monthly[monthKey] || 0) + daily;
   }
 
   return { total, monthly };
