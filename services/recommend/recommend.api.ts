@@ -5,8 +5,7 @@ import { mapCdrPlanToCanonical } from "../cdr/cdr.mapper";
 
 import {
   calculateSupplyCharge,
-  calculateSingleRateUsageCharge,
-  calculateTouUsageCharge,
+  calculateUsageCharge,
   calculateSolarFit,
   calculateControlledLoadUsageCharge,
   calculateControlledLoadSupplyCharge,
@@ -15,6 +14,7 @@ import {
   applyDiscounts,
   aggregateCostResults
 } from "../../domain/pricing";
+
 
 import {
   RecommendRequest,
@@ -75,26 +75,17 @@ export const recommend = api(
       // calculation components
       // supply
       const supply = calculateSupplyCharge({ plan, usageSeries });
-
-      // usage (TOU vs Single Rate)
-      const usageCost =
-        plan.tariffPeriods[0]?.usageCharge?.rateBlockUType === "TIME_OF_USE"
-          ? calculateTouUsageCharge({ plan, usageSeries })
-          : calculateSingleRateUsageCharge({ plan, usageSeries });
-
-      // solar feed-in
+      const usageCost = calculateUsageCharge({ plan, usageSeries });
       const solar = calculateSolarFit({ plan, usageSeries });
-
-      // controlled load usage
+      
       const controlledLoadUsage =
         calculateControlledLoadUsageCharge({ plan, usageSeries });
-
-      // controlled load supply
+      
       const controlledLoadSupply =
         calculateControlledLoadSupplyCharge({ plan, usageSeries });
+      
       const demand = calculateDemandCharge({ plan, usageSeries });
-
-      // aggregate base costs
+      
       const base = aggregateCostResults({
         supply,
         usage: usageCost,
@@ -103,21 +94,20 @@ export const recommend = api(
         controlledLoadSupply,
         demand,
       });
-
-      // fees + discounts
+      
       const fees = calculateFees({
         plan,
         baseTotal: base.annualBaseTotal,
       });
-
+      
       const totals = applyDiscounts({
         plan,
         baseTotal: base.annualBaseTotal + fees,
       });
-
-      // 3) NORMALISE TO ANNUAL (PROXY)
+      
+      // PROXY annualisation (1-month proxy)
       const annualCost = totals.bestCaseTotal * 12;
-
+      
       results.push({
         planId: p.planId,
         displayName: p.displayName,
