@@ -1,44 +1,69 @@
 import { resolveTariffPeriod } from "./resolve-tariff-period";
+import { findMatchingTouRate } from "../../utils/tou-utils";
 import { allocateTieredUsageWithPeriod } from "./core/allocate-tiered-usage";
 import { TierAccumulator } from "./core/tier-accumulator";
 import { getLocalParts } from "../../utils/time";
-// calculate single rate usage charge
-export function calculateSingleRateUsageCharge({
+
+// Calculate usage charges based on plan and usage series
+export function calculateUsageCharge({
   plan,
   usageSeries,
 }: any) {
   let total = 0;
   const monthly: Record<string, number> = {};
-  
-  let accumulator = new TierAccumulator();
-  // iterate usage series
+
+  const accumulator = new TierAccumulator();
+
   for (const i of usageSeries) {
     if (i.import_kwh <= 0) continue;
-    // find tariff period
-    const tp = resolveTariffPeriod(plan.tariffPeriods, i.timestamp_start);
+
+    // Find the applicable tariff period for the interval
+    const tp = resolveTariffPeriod(plan.tariffPeriods, i.localDate!);
     const usageCharge = tp.usageCharge;
-    if (!usageCharge?.rates?.length) continue;
-    
-    let timeZone = tp.timeZone || "Australia/Sydney";
+    if (!usageCharge) continue;
 
-    // unique key per tariff period + rate group
-    const tariffKey = `IMPORT|${tp.startDate ?? "ALL"}-${tp.endDate ?? "ALL"}`;
-    
-    const tiers = tp.usageCharge?.rates;
-    if (!tiers?.length) continue;
+    const timeZone = tp.timeZone || "Australia/Sydney";
+    const { monthKey } = getLocalParts(
+      new Date(i.timestamp_start),
+      timeZone
+    );
 
-    // allocate usage
+    let rates = [];
+    let type = "SINGLE";
+
+    // if single rate
+    if (usageCharge.rateBlockUType === "SINGLE_RATE") {
+      rates = usageCharge.rates || [];
+    }
+
+    // if time-of-use
+    if (usageCharge.rateBlockUType === "TIME_OF_USE") {
+      const r = findMatchingTouRate(
+        usageCharge.timeOfUseRates || [],
+        {
+          weekday: i.weekday!,
+          time: i.startTime!,
+        }
+      );
+      if (!r?.rates) continue;
+      rates = r.rates;
+      type = r.type;
+    }
+
+    if (!rates.length) continue;
+
+    // create a unique tariff key
+    const tariffKey = `IMPORT|${tp.startDate ?? "ALL"}-${tp.endDate ?? "ALL"}|${type}`;
+
     const cost = allocateTieredUsageWithPeriod({
       kwh: i.import_kwh,
-      tiers,
+      tiers: rates,
       timestamp: i.timestamp_start,
       timeZone,
       tariffKey,
       accumulator,
-    })
+    });
 
-    const { monthKey } = getLocalParts(new Date(i.timestamp_start), timeZone);
-    
     total += cost;
     monthly[monthKey] = (monthly[monthKey] || 0) + cost;
   }

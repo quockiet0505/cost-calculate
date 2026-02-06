@@ -35,3 +35,10 @@ export function getLocalParts(
      return { weekday, time, dateKey, monthKey };
    }
    
+
+   // get local minutes from "HH:mm"
+export function getLocalMinutes(startTime: string): number {
+  // startTime = "HH:mm"
+  const [hh, mm] = startTime.split(":").map(Number);
+  return hh * 60 + mm;
+}

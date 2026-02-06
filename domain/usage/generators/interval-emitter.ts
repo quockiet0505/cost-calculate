@@ -3,31 +3,40 @@ import { DailyLoadShape } from '../templates/template.types'
 import { CanonicalUsageInterval } from '../canonical-usage';
 
 
-// emit 48 interval for a day based on daily load shape
 export function emitDayIntervals(
      day: Date,
+     intervalMinutes: number,
      shape: DailyLoadShape
-): CanonicalUsageInterval[] {
-
+   ): CanonicalUsageInterval[] {
+   
      const intervals: CanonicalUsageInterval[] = [];
-
-     for(let slot =0; slot<48; slot ++){
-          // calculate start and end time
-          const start = new Date(day)
-          start.setUTCHours(Math.floor(slot/2), slot % 2 ? 0 : 30 , 0, 0);
-
-          const  end = new Date(start);
-          end.setUTCMinutes(end.getUTCMinutes() + 30);
-
-          intervals.push({
-               timestamp_start: start.toISOString(),
-               timestamp_end: end.toISOString(),
-               import_kwh: shape.import[slot],
-               export_kwh: shape.export[slot],
-               controlled_import_kwh: shape.controlledLoad[slot],
-          });
+   
+     // start at 00:00 UTC of the day
+     const startOfDay = new Date(day);
+     startOfDay.setUTCHours(0, 0, 0, 0);
+   
+     const endOfDay = new Date(startOfDay);
+     endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
+   
+     let cursor = new Date(startOfDay);
+     let bucket = 0;
+   
+     while (cursor < endOfDay) {
+       const next = new Date(cursor);
+       next.setUTCMinutes(next.getUTCMinutes() + intervalMinutes);
+   
+       intervals.push({
+         timestamp_start: cursor.toISOString(),
+         timestamp_end: next.toISOString(),
+         import_kwh: shape.import[bucket] ?? 0,
+         export_kwh: shape.export[bucket] ?? 0,
+         controlled_import_kwh: shape.controlledLoad[bucket] ?? 0,
+       });
+   
+       cursor = next;
+       bucket++;
      }
-
+   
      return intervals;
-
-}
+   }
+   

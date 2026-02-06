@@ -28,3 +28,18 @@ export function buildDailySolarCurve(): SolarCurve {
 
   return curve;
 }
+
+
+export function solarWeightByMinute(minute: number): number {
+  const sunrise = 6 * 60;   // 06:00
+  const sunset = 18 * 60;   // 18:00
+  const peak = 12 * 60;     // 12:00
+
+  if (minute < sunrise || minute > sunset) return 0;
+
+  const dist = Math.abs(minute - peak);
+  const maxDist = sunset - peak;
+
+  return Math.max(0, 1 - dist / maxDist);
+}
+

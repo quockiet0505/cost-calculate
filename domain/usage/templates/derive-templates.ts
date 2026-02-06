@@ -1,45 +1,40 @@
 // domain/usage/templates/derive-templates.ts
 
+import type { CanonicalUsageInterval } from "../canonical-usage";
 import { WeeklyLoadTemplate, Weekday } from "./template.types";
-import { getWeekday } from "../generators/weekday-utils";
-import { getHalfHourIndex } from "../normalize/interval-utils";
-
-interface UsageInterval {
-  timestamp_start: string;
-  import_kwh?: number;
-  export_kwh?: number;
-  controlled_import_kwh?: number;
-}
+import { getLocalMinutes } from "../../../utils/time";
 
 export function deriveLoadTemplate(
-  intervals: UsageInterval[]
+  intervals: CanonicalUsageInterval[],
+  intervalMinutes: number
 ): WeeklyLoadTemplate {
-  // accumulator
-  const sums: any = {};
-  const counts: any = {};
+
+  const bucketsPerDay = Math.floor((24 * 60) / intervalMinutes);
+
+  const sums: Record<string, any> = {};
+  const counts: Record<string, number[]> = {};
 
   for (const i of intervals) {
-    const date = new Date(i.timestamp_start);
-     // extract thứ day of week
-    const day: Weekday = getWeekday(date);
-     // extract half-hour slots
-    const slot = getHalfHourIndex(date);
+    if (!i.weekday || !i.startTime) continue;
+
+    const day = i.weekday as Weekday;
+    const minute = getLocalMinutes(i.startTime);
+    const bucket = Math.floor(minute / intervalMinutes);
 
     sums[day] ??= {
-      import: Array(48).fill(0),
-      export: Array(48).fill(0),
-      controlledLoad: Array(48).fill(0),
+      import: Array(bucketsPerDay).fill(0),
+      export: Array(bucketsPerDay).fill(0),
+      controlledLoad: Array(bucketsPerDay).fill(0),
     };
 
-    counts[day] ??= Array(48).fill(0);
+    counts[day] ??= Array(bucketsPerDay).fill(0);
 
-    sums[day].import[slot] += i.import_kwh ?? 0;
-    sums[day].export[slot] += i.export_kwh ?? 0;
-    sums[day].controlledLoad[slot] += i.controlled_import_kwh ?? 0;
-    counts[day][slot]++;
+    sums[day].import[bucket] += i.import_kwh ?? 0;
+    sums[day].export[bucket] += i.export_kwh ?? 0;
+    sums[day].controlledLoad[bucket] += i.controlled_import_kwh ?? 0;
+    counts[day][bucket]++;
   }
 
-  // average
   const template: any = {};
 
   for (const day of Object.keys(sums) as Weekday[]) {

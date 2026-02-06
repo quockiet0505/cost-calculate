@@ -7,8 +7,10 @@ import { CanonicalUsageInterval } from "../canonical-usage";
 export function generateFutureUsage(
   template: WeeklyLoadTemplate,
   startDate: Date,
-  months: number
+  months: number,
+  intervalMinutes: number
 ): CanonicalUsageInterval[] {
+
   const result: CanonicalUsageInterval[] = [];
   const cursor = new Date(startDate);
 
@@ -20,11 +22,14 @@ export function generateFutureUsage(
     const shape = template[weekday];
 
     if (shape) {
-      const dayIntervals = emitDayIntervals(cursor, shape);
+      const dayIntervals = emitDayIntervals(
+        cursor,
+        intervalMinutes,
+        shape
+      );
       result.push(...dayIntervals);
     }
 
-    // move to next day
     cursor.setUTCDate(cursor.getUTCDate() + 1);
   }
 

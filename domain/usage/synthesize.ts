@@ -9,6 +9,8 @@ import { applySeasonality } from "./seasonality/apply-seasonality";
 import { applyHolidayBehaviour } from "./calendar/apply-holiday";
 
 import { normalizeIntervals } from "./normalize/normalize-intervals";
+import { detectIntervalMinutes } from "./normalize/interval-utils";
+import { fillMissingIntervals } from "./normalize/fill-gaps";
 
 // Simulate 12 months of usage based on input model
 export function simulateUsage12Months(
@@ -35,9 +37,26 @@ export function simulateUsage12Months(
     const timeZone = "Australia/Sydney"; // Model 1 assumption
     usageSeries = normalizeIntervals(usageSeries, timeZone);
   
+    // 2. detect resolution
+    const intervalMinutes = detectIntervalMinutes(usageSeries);
+
+    // 3. fill gaps BEFORE any behaviour
+    usageSeries = fillMissingIntervals(usageSeries, intervalMinutes);
+
     //  STEP 2: derive template AFTER normalize
-    const template = deriveLoadTemplate(usageSeries);
-  
+    const template = deriveLoadTemplate(
+      usageSeries,
+      intervalMinutes
+    );    
+
+    // generate next 12 months from template
+    usageSeries = generateFutureUsage(
+      template,
+      new Date(usageSeries[0].timestamp_start),
+      12,
+      intervalMinutes
+    );
+      
     //  STEP 3: behaviours (LOCAL based)
     usageSeries = applyHolidayBehaviour(usageSeries, template);
     usageSeries = applySeasonality(usageSeries);
@@ -65,61 +84,77 @@ function synthesizeFromAverage(
   input: UsageInput
 ): { usageSeries: CanonicalUsageInterval[] } {
 
-  // extract averages for import + controlled load
   const avg = input.averageMonthlyKwh ?? 0;
   const avgCL = input.averageMonthlyControlledKwh ?? 0;
 
-  // build 12 months of half-hourly intervals
+  const intervalMinutes = 30; // v1 assumption
   const intervals: CanonicalUsageInterval[] = [];
 
-  // base date
+  // generate 12 months of intervals
   const base = getBillingAnchorDate();
 
-  // iterate months
   for (let m = 0; m < 12; m++) {
     const d = new Date(base);
     d.setUTCMonth(d.getUTCMonth() + m);
 
-    const month = d.getUTCMonth() + 1;
-    const days = new Date(d.getUTCFullYear(), month, 0).getDate();
+    const days = new Date(
+      d.getUTCFullYear(),
+      d.getUTCMonth() + 1,
+      0
+    ).getDate();
 
-    // distribute evenly across month
-    const perInterval = avg / (days * 48);
-    const perIntervalCL = avgCL / (days * 48);
+    // distribute avg kWh evenly
+    const intervalsPerDay = Math.floor((24 * 60) / intervalMinutes);
+    const perInterval = avg / (days * intervalsPerDay);
+    const perIntervalCL = avgCL / (days * intervalsPerDay);
 
-    // iterate days + slots
+    // generate intervals for the month
     for (let day = 1; day <= days; day++) {
-      for (let slot = 0; slot < 48; slot++) {
-        const start = new Date(Date.UTC(
-          d.getUTCFullYear(),
-          d.getUTCMonth(),
-          day,
-          Math.floor(slot / 2),
-          slot % 2 ? 30 : 0
-        ));
-        const end = new Date(start);
-        end.setUTCMinutes(end.getUTCMinutes() + 30);
+      const startOfDay = new Date(Date.UTC(
+        d.getUTCFullYear(),
+        d.getUTCMonth(),
+        day, 0, 0, 0
+      ));
+
+      const endOfDay = new Date(startOfDay);
+      endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
+
+      let cursor = new Date(startOfDay);
+
+      // emit intervals for the day
+      while (cursor < endOfDay) {
+        const next = new Date(cursor);
+        next.setUTCMinutes(next.getUTCMinutes() + intervalMinutes);
 
         intervals.push({
-          timestamp_start: start.toISOString(),
-          timestamp_end: end.toISOString(),
+          timestamp_start: cursor.toISOString(),
+          timestamp_end: next.toISOString(),
           import_kwh: perInterval,
           export_kwh: 0,
           controlled_import_kwh: perIntervalCL,
         });
+
+        cursor = next;
       }
     }
   }
 
-  // apply synthetic behaviours ONLY here
-  let usageSeries = applyControlledLoadBehaviour(intervals);
+  const timeZone = "Australia/Sydney";
+
+  let usageSeries = normalizeIntervals(intervals, timeZone);
+  const detectedIntervalMinutes = detectIntervalMinutes(usageSeries);
+
+  usageSeries = fillMissingIntervals(
+    usageSeries,
+    detectedIntervalMinutes
+  );
+
+  usageSeries = applyControlledLoadBehaviour(usageSeries);
   usageSeries = applySolarExport(usageSeries);
 
-  // after
-  // seasonality, DST, holiday, EV profile 
-  
   return { usageSeries };
 }
+
 
 // get current month
 function getBillingAnchorDate(): Date {

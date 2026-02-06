@@ -1,41 +1,74 @@
 import { TariffPeriod } from "../plan/tariff-period";
 
-
-//  Resolve applicable tariff period for a LOCAL date
-//  - Supports ISO date (YYYY-MM-DD)
-//  - Supports seasonal MM-DD (recurring yearly)
-
 export function resolveTariffPeriod(
   periods: TariffPeriod[],
   localDate: string // YYYY-MM-DD
 ): TariffPeriod {
+
   if (!periods?.length) {
     throw new Error("No tariff periods defined");
   }
 
   const mmdd = localDate.slice(5); // MM-DD
 
-  const matches = periods.filter(p => {
-    if (!p.startDate || !p.endDate) return true;
+  // Absolute date periods (highest priority)
+  const absoluteMatches = periods.filter(p =>
+    isAbsolute(p) &&
+    localDate >= p.startDate! &&
+    localDate <= p.endDate!
+  );
 
-    // absolute ISO range
-    if (p.startDate.length === 10) {
-      return localDate >= p.startDate && localDate <= p.endDate;
-    }
+  if (absoluteMatches.length === 1) {
+    return absoluteMatches[0];
+  }
+  if (absoluteMatches.length > 1) {
+    throw new Error("Multiple absolute tariff periods match date " + localDate);
+  }
 
-    // seasonal MM-DD range
-    const start = p.startDate;
-    const end = p.endDate;
+  //  Seasonal MM-DD periods
+  const seasonalMatches = periods.filter(p => {
+    if (!isSeasonal(p)) return false;
 
-    // normal season (e.g. 01-01 → 06-30)
+    const start = p.startDate!;
+    const end = p.endDate!;
+
     if (start <= end) {
       return mmdd >= start && mmdd <= end;
     }
-
     // wrapped season (e.g. 07-01 → 06-30)
     return mmdd >= start || mmdd <= end;
   });
 
-  // deterministic fallback (guide-approved)
-  return matches.length ? matches[0] : periods[0];
+  if (seasonalMatches.length === 1) {
+    return seasonalMatches[0];
+  }
+  if (seasonalMatches.length > 1) {
+    throw new Error("Multiple seasonal tariff periods match date " + localDate);
+  }
+
+  // Open-ended fallback
+  const openEnded = periods.filter(
+    p => !p.startDate && !p.endDate
+  );
+
+  if (openEnded.length === 1) {
+    return openEnded[0];
+  }
+
+  // Final fallback (explicit)
+  throw new Error(
+    "No matching tariff period for date " + localDate
+  );
+}
+
+
+// function helper 
+// MM/DD/YYY
+function isAbsolute(p: TariffPeriod): boolean {
+  return !!(p.startDate && p.endDate && p.startDate.length === 10);
+}
+
+// MM-DD
+function isSeasonal(p: TariffPeriod): boolean {
+  return !!(p.startDate && p.endDate && p.startDate.length === 5);
 }

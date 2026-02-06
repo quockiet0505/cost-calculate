@@ -95,3 +95,18 @@ curl -X POST \
     }
   }'
 ```
+
+### Flow code
+```bash
+Recommend API:
+  Usage (proxy)
+  → Simulation
+  → Pricing (coarse)
+  → Ranking + Explanation
+
+Cost API:
+  Usage (full)
+  → Simulation
+  → Pricing (billing-grade)
+  → Monthly / bill breakdown
+```

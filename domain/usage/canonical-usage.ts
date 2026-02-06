@@ -15,4 +15,9 @@ export interface CanonicalUsageInterval {
   weekday?: string;     // MON, TUE...
   startTime?: string;   // HH:mm
   endTime?: string;     // HH:mm
+
+  quality?: {
+    estimated?: boolean;   // filled gap / interpolated
+    source?: "INPUT" | "FILLED";
+  };
 }
