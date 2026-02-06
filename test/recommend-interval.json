@@ -6,16 +6,16 @@
       {
         "timestamp_start": "2026-01-02T02:00:00Z",
         "timestamp_end": "2026-01-02T02:30:00Z",
-        "import_kwh": 0.6,
-        "export_kwh": 0,
-        "controlled_import_kwh": 0.4
+        "import_kwh": 100,
+        "export_kwh": 50,
+        "controlled_import_kwh": 30
       },
       {
         "timestamp_start": "2026-01-02T07:00:00Z",
         "timestamp_end": "2026-01-02T07:30:00Z",
-        "import_kwh": 1.0,
-        "export_kwh": 0,
-        "controlled_import_kwh": 0
+        "import_kwh": 120,
+        "export_kwh": 10,
+        "controlled_import_kwh": 30
       }
     ]
   }

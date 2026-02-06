@@ -1,9 +1,8 @@
 import { api } from "encore.dev/api";
-
 import { fetchPlanDetail } from "../cdr/cdr.http";
 import { mapCdrPlanToCanonical } from "../cdr/cdr.mapper";
+import { simulateUsageForBilling } from "../../domain/usage/simulate-billing";
 
-import { simulateUsage12Months } from "../../domain/usage/synthesize";
 import {
   calculateSupplyCharge,
   calculateUsageCharge,
@@ -19,22 +18,26 @@ import {
 import { safeNumber } from "../../utils/number";
 import { sanitizeMonthlyBreakdown } from "../../utils/sanitize";
 import { CostRequest, CostResponse } from "./cost.types";
+import { CanonicalUsageInterval } from "../../domain/usage/canonical-usage";
 
-// define cost api
 export const cost = api(
   { method: "POST", path: "/energy/cost", expose: true },
   async (req: CostRequest): Promise<CostResponse> => {
 
     const { retailer, planId, usage } = req;
+
     if (!retailer || !planId) {
       throw new Error("retailer and planId are required");
     }
 
+    //Fetch plan
     const planRes = await fetchPlanDetail(retailer, planId);
     const plan = mapCdrPlanToCanonical(planRes.data);
 
-    const { usageSeries } = simulateUsage12Months(usage);
+    // Prepare usage series
+    const { usageSeries } = simulateUsageForBilling(usage);
 
+    //  Pricing
     const supply = calculateSupplyCharge({ plan, usageSeries });
     const usageCost = calculateUsageCharge({ plan, usageSeries });
     const solar = calculateSolarFit({ plan, usageSeries });
@@ -56,6 +59,7 @@ export const cost = api(
       demand,
     });
 
+    //  Fees + discounts
     const fees = safeNumber(
       calculateFees({
         plan,

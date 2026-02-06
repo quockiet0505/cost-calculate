@@ -1,7 +1,7 @@
 import { fetchPlanDetail } from "../cdr/cdr.http";
 import { mapCdrPlanToCanonical } from "../cdr/cdr.mapper";
 
-import { simulateUsage12Months } from "../../domain/usage/synthesize";
+import { simulateUsageForBilling } from "../../domain/usage/simulate-billing";
 import {
   calculateSupplyCharge,
   calculateUsageCharge,
@@ -32,7 +32,7 @@ export async function costHandler(
   const planRes = await fetchPlanDetail(retailer, planId);
   const plan = mapCdrPlanToCanonical(planRes.data);
 
-  const { usageSeries } = simulateUsage12Months(usage);
+  const { usageSeries } = simulateUsageForBilling(usage);
 
   const supply = calculateSupplyCharge({ plan, usageSeries });
   const usageCost = calculateUsageCharge({ plan, usageSeries });

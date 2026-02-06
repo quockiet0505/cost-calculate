@@ -1,8 +1,7 @@
 export const EXPLAIN_RULES = {
-     SUPPLY_THRESHOLD: 40,     // $/year
-     USAGE_THRESHOLD: 60,
-     SOLAR_THRESHOLD: 30,
-     DEMAND_THRESHOLD: 50,
-     MAX_ITEMS: 3,             // rely 3 reason
-   };
-   
+  SUPPLY_THRESHOLD: 0.01, // Chỉ cần lệch 1 cent là báo luôn
+  USAGE_THRESHOLD: 0.01,
+  SOLAR_THRESHOLD: 0.01,
+  DEMAND_THRESHOLD: 0.01,
+  MAX_ITEMS: 3,
+};
