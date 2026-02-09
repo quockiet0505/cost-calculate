@@ -1,4 +1,3 @@
-// domain/usage/templates/template.types.ts
 
 export type Weekday = | "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT" | "SUN";
 

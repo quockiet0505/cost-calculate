@@ -66,6 +66,7 @@ export function calculateUsageCharge({
 
     total += cost;
     monthly[monthKey] = (monthly[monthKey] || 0) + cost;
+    
   }
 
   return { total, monthly };

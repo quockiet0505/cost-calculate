@@ -1,7 +1,7 @@
-import { CanonicalUsageInterval } from "./canonical-usage";
-import { normalizeIntervals } from "./normalize/normalize-intervals";
-import { applyControlledLoadBehaviour } from "./controlled-load/apply-cl";
-import { applySolarExport } from "./solar/apply-solar";
+import { CanonicalUsageInterval } from "../canonical-usage";
+import { normalizeIntervals } from "../normalize/normalize-intervals";
+import { applyControlledLoadBehaviour } from "../controlled-load/apply-cl";
+import { applySolarExport } from "../solar/apply-solar";
 
 export type SynthesizeWindow = {
   start: Date;   // local month start

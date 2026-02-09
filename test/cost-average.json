@@ -1,8 +1,9 @@
 {
      "retailer": "energyaustralia",
-     "planId": "ENE976986MRE3@EME",
+     "planId": "ENE976993MRE3@EME",
      "usage": {
        "mode": "AVERAGE",
-       "averageMonthlyKwh": 500
+       "averageMonthlyKwh": 300,
+        "averageMonthlyControlledKwh": 50
      }
    }

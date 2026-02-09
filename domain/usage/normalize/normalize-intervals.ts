@@ -1,13 +1,7 @@
 import { CanonicalUsageInterval } from "../canonical-usage";
 import { getLocalParts } from "../../../utils/time";
 
-/**
- * Normalize UTC intervals into local-time-aware canonical intervals.
- * Model 1 scope:
- * - timezone aware
- * - DST safe (no pricing on raw UTC)
- * - NO realism, NO resampling
- */
+
 export function normalizeIntervals(
   intervals: CanonicalUsageInterval[],
   timeZone: string

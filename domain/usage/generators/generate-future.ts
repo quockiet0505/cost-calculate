@@ -14,8 +14,9 @@ export function generateFutureUsage(
   const result: CanonicalUsageInterval[] = [];
   const cursor = new Date(startDate);
 
+  // local calendar end (exclusive)
   const end = new Date(startDate);
-  end.setUTCMonth(end.getUTCMonth() + months);
+  end.setMonth(end.getMonth() + months);
 
   while (cursor < end) {
     const weekday = getWeekday(cursor);
@@ -30,7 +31,8 @@ export function generateFutureUsage(
       result.push(...dayIntervals);
     }
 
-    cursor.setUTCDate(cursor.getUTCDate() + 1);
+    // move by local day
+    cursor.setDate(cursor.getDate() + 1);
   }
 
   return result;

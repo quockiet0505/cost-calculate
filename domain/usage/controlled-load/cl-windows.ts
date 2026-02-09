@@ -4,7 +4,7 @@ export interface ControlledLoadWindow {
   endMinute: number;   // exclusive
 }
 
-// Default: 23:00 → 07:00
+// Default: 23:00 -> 07:00
 export const DEFAULT_CL_WINDOWS: ControlledLoadWindow[] = [
   { startMinute: 23 * 60, endMinute: 24 * 60 },
   { startMinute: 0, endMinute: 7 * 60 },

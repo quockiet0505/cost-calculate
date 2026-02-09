@@ -9,7 +9,11 @@ export function calculateSupplyCharge({ plan, usageSeries }: any) {
   let total = 0;
 
   for (const i of usageSeries) {
-    const tp = resolveTariffPeriod(plan.tariffPeriods, i.timestamp_start);
+    const tp = resolveTariffPeriod(
+      plan.tariffPeriods,
+      i.localDate
+    );
+    
     const timeZone = tp.timeZone || "Australia/Sydney";
 
     const { dateKey, monthKey } = getLocalParts(

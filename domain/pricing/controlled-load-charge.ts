@@ -19,6 +19,14 @@ export function calculateControlledLoadUsageCharge({
     if ((i.controlled_import_kwh || 0) <= 0) continue;
 
     const tp = resolveTariffPeriod(plan.tariffPeriods, i.localDate);
+    // check
+    
+    // console.log("[CL DEBUG] TariffPeriod", {
+    //   localDate: i.localDate,
+    //   hasControlledLoad: !!tp.controlledLoad,
+    //   controlledLoad: tp.controlledLoad,
+    // });
+
     const planTimeZone = plan.timeZone || "Australia/Sydney";
     const cl = tp.controlledLoad;
 
@@ -53,6 +61,14 @@ export function calculateControlledLoadUsageCharge({
 
     // create unique tariff key
     const tariffKey = `CL|${tp.startDate}-${tp.endDate}|${type}`;
+
+    // console.log("[CL COST INPUT]", {
+    //   kwh: i.controlled_import_kwh,
+    //   rates,
+    //   rateCount: rates.length,
+    //   tariffKey,
+    // });
+    
 
     // call allocation function
     const cost = allocateTieredUsageWithPeriod({

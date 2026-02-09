@@ -2,13 +2,18 @@ import { TariffPeriod } from "../plan/tariff-period";
 
 export function resolveTariffPeriod(
   periods: TariffPeriod[],
-  dateInput: string
+  // dateInput: string
+  localDate: string // YYYY-MM-DD 
 ): TariffPeriod {
   if (!periods?.length) {
     throw new Error("No tariff periods defined");
   }
 
-  const localDate = dateInput.substring(0, 10); // YYYY-MM-DD
+  if (!localDate) {
+    throw new Error("resolveTariffPeriod: localDate is undefined");
+  }
+  
+  //const localDate = dateInput.substring(0, 10); // YYYY-MM-DD
   const mmdd = localDate.slice(5);              // MM-DD
 
   let bestAbsolute: TariffPeriod | undefined;

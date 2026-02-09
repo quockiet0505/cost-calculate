@@ -14,7 +14,8 @@ export function calculateControlledLoadSupplyCharge({
     if ((i.controlled_import_kwh || 0) <= 0) continue;
 
     // find tariff period
-    const tp = resolveTariffPeriod(plan.tariffPeriods, i.timestamp_start);
+    // const tp = resolveTariffPeriod(plan.tariffPeriods, i.timestamp_start);
+    const tp = resolveTariffPeriod(plan.tariffPeriods, i.localDate);
     const timeZone = tp.timeZone || "Australia/Sydney";
 
     // get date and month keys

@@ -31,19 +31,19 @@ export function aggregateCostResults({
     const demandM = demand?.monthly?.[m] ?? 0;
     const solarM = solar?.monthly?.[m] ?? 0;
 
-    const controlledLoadM = clUsageM + clSupplyM;
-
     const total =
       supplyM +
       usageM +
-      controlledLoadM +
+      clUsageM +
+      clSupplyM +
       demandM -
       solarM;
 
     monthlyBreakdown[m] = {
       supply: supplyM,
       usage: usageM,
-      controlledLoad: controlledLoadM,
+      controlledLoadUsage: clUsageM,
+      controlledLoadSupply: clSupplyM,
       demand: demandM,
       solar: solarM,
       total,
@@ -51,7 +51,7 @@ export function aggregateCostResults({
 
     annualSupply += supplyM;
     annualUsage += usageM;
-    annualControlledLoad += controlledLoadM;
+    annualControlledLoad += clUsageM + clSupplyM;
     annualDemand += demandM;
     annualSolar += solarM;
   }

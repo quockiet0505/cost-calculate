@@ -1,7 +1,8 @@
 import { api } from "encore.dev/api";
 import { fetchPlanDetail } from "../cdr/cdr.http";
 import { mapCdrPlanToCanonical } from "../cdr/cdr.mapper";
-import { simulateUsageForBilling } from "../../domain/usage/simulate-billing";
+// import { simulateUsageForBilling } from "../../domain/usage/simulate-billing";
+import { simulateUsage } from "../../domain/usage/engine/usage-engine";
 
 import {
   calculateSupplyCharge,
@@ -18,7 +19,11 @@ import {
 import { safeNumber } from "../../utils/number";
 import { sanitizeMonthlyBreakdown } from "../../utils/sanitize";
 import { CostRequest, CostResponse } from "./cost.types";
-import { CanonicalUsageInterval } from "../../domain/usage/canonical-usage";
+
+import { getPlan } from "../cdr/plan-repository";
+// temp
+import { getMockPlan } from "../mock/mock-plan";
+
 
 export const cost = api(
   { method: "POST", path: "/energy/cost", expose: true },
@@ -31,11 +36,13 @@ export const cost = api(
     }
 
     //Fetch plan
-    const planRes = await fetchPlanDetail(retailer, planId);
-    const plan = mapCdrPlanToCanonical(planRes.data);
+    // const planRes = await fetchPlanDetail(retailer, planId);
+    // const plan = mapCdrPlanToCanonical(planRes.data);
+    // const plan = await getPlan(retailer, planId);
+    const plan = getMockPlan();
 
     // Prepare usage series
-    const { usageSeries } = simulateUsageForBilling(usage);
+    const  usageSeries  = simulateUsage(usage);
 
     //  Pricing
     const supply = calculateSupplyCharge({ plan, usageSeries });
@@ -82,3 +89,5 @@ export const cost = api(
     };
   }
 );
+
+

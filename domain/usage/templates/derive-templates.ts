@@ -1,4 +1,3 @@
-// domain/usage/templates/derive-templates.ts
 
 import type { CanonicalUsageInterval } from "../canonical-usage";
 import { WeeklyLoadTemplate, Weekday } from "./template.types";

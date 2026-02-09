@@ -24,9 +24,21 @@ Model 1 focuses on **correctness** rather than realism, using real interval data
 ``` bash
 domain/
 └── usage/
-    ├── synthesize.ts              # ENTRY POINT (Model 1 & 2 switch)
-    ├── usage.types.ts
-    ├── canonical-usage.ts
+    usage/
+    ├── model/
+    │   ├── canonical-usage.ts
+    │   └── usage.types.ts
+    │
+    ├── pipeline/
+    │   ├── usage-pipeline.ts        // orchestrate steps
+    │   ├── interval-pipeline.ts     // model 1
+    │   └── average-pipeline.ts      // model 2
+    │
+    ├── synthesize/
+    │   └── synthesize-average.ts
+    │
+    ├── engine/
+    │   └── usage-engine.ts
 
     ├── normalize/                 # MODEL 1 – interval correctness
     │   ├── normalize-intervals.ts # UTC → local, DST-safe
@@ -110,3 +122,24 @@ Cost API:
   → Pricing (billing-grade)
   → Monthly / bill breakdown
 ```
+
+### Test unit
+```bash
+curl -s -X POST http://localhost:4000/energy/recommend-4w \
+  -H "Content-Type: application/json" \
+  -d @test/recommend-average.json 
+
+curl -s -X POST http://localhost:4000/energy/recommend-fast \
+  -H "Content-Type: application/json" \
+  -d @test/recommend-average.json 
+
+curl -s -X POST http://localhost:4000/energy/cost \
+  -H "Content-Type: application/json" \
+  -d @test/cost-average.json 
+
+  
+curl -s -X POST http://localhost:4000/energy/cost \
+  -H "Content-Type: application/json" \
+  -d @test/cost-interval-controlled-load.json
+```
+

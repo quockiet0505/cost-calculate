@@ -7,6 +7,8 @@ export class CanonicalPlan {
   fees: CanonicalFee[] = [];
   solarFIT: SolarFIT[] = [];
   discounts: CanonicalDiscount[] = [];
+     controlledLoad: any;
+     demandCharges: any;
 }
 
 
