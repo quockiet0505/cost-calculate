@@ -1,6 +1,6 @@
 
 import { DailyLoadShape } from '../templates/template.types'
-import { CanonicalUsageInterval } from '../canonical-usage';
+import { CanonicalUsageInterval } from '../model/canonical-usage';
 
 
 export function emitDayIntervals(

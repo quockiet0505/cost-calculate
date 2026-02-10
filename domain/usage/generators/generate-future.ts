@@ -1,7 +1,7 @@
 import { WeeklyLoadTemplate } from "../templates/template.types";
 import { getWeekday } from "./weekday-utils";
 import { emitDayIntervals } from "./interval-emitter";
-import { CanonicalUsageInterval } from "../canonical-usage";
+import { CanonicalUsageInterval } from "../model/canonical-usage";
 
 // Generate future usage from template (no seasonality yet)
 export function generateFutureUsage(
@@ -12,27 +12,26 @@ export function generateFutureUsage(
 ): CanonicalUsageInterval[] {
 
   const result: CanonicalUsageInterval[] = [];
-  const cursor = new Date(startDate);
 
-  // local calendar end (exclusive)
-  const end = new Date(startDate);
-  end.setMonth(end.getMonth() + months);
+  for (let m = 0; m < months; m++) {
+    const monthStart = new Date(startDate);
+    monthStart.setMonth(startDate.getMonth() + m);
 
-  while (cursor < end) {
-    const weekday = getWeekday(cursor);
-    const shape = template[weekday];
+    const year = monthStart.getFullYear();
+    const month = monthStart.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-    if (shape) {
-      const dayIntervals = emitDayIntervals(
-        cursor,
-        intervalMinutes,
-        shape
+    for (let d = 0; d < daysInMonth; d++) {
+      const day = new Date(year, month, d + 1);
+      const weekday = getWeekday(day);
+      const shape = template[weekday];
+
+      if (!shape) continue;
+
+      result.push(
+        ...emitDayIntervals(day, intervalMinutes, shape)
       );
-      result.push(...dayIntervals);
     }
-
-    // move by local day
-    cursor.setDate(cursor.getDate() + 1);
   }
 
   return result;

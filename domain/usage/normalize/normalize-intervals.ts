@@ -1,4 +1,4 @@
-import { CanonicalUsageInterval } from "../canonical-usage";
+import { CanonicalUsageInterval } from '../model/canonical-usage';
 import { getLocalParts } from "../../../utils/time";
 
 

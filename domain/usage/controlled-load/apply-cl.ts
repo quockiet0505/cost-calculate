@@ -1,4 +1,4 @@
-import { CanonicalUsageInterval } from "../canonical-usage";
+import { CanonicalUsageInterval } from '../model/canonical-usage';
 import { getLocalMinutes } from "../../../utils/time";
 import { isControlledLoadActiveMinute } from "./cl-windows";
 

@@ -1,145 +1,187 @@
-## Energy Cost Platform – Model 1 (Interval-based Simulation)
+## Energy Cost Platform
 
-This repository implements **Model 1** of the energy cost simulation engine.
-Model 1 focuses on **correctness** rather than realism, using real interval data
-(5-min / 30-min) as ground truth and applying tariff logic accurately.
+This project implements a **production-oriented energy cost calculation and recommendation engine**
+for the Australian electricity market.
 
----
-
-### Scope (Model 1)
-
-✔ Interval-based usage input  
-✔ Timezone-aware normalization (UTC → local)  
-✔ Tariff period resolution using MM-DD seasonal logic  
-✔ TOU, Controlled Load, Demand Charge, Solar FiT pricing  
-✔ Holiday handling (public holidays behave like Sunday)  
-✔ Monthly breakdown + annual total  
-✔ Deployed to Google Cloud Run via Encore  
-
+It supports **interval-based pricing**, **synthetic usage simulation**, and **Consumer Data Right (CDR)**
+energy plan comparison.
 
 ---
 
-### Project Structure (Domain Layer)
+## What This System Does
 
-``` bash
+- Calculates electricity costs accurately using real tariff rules
+- Supports both real interval data and synthetic usage modelling
+- Fetches and compares live energy plans via CDR
+- Recommends the cheapest plans for a given household profile
+
+---
+
+## Supported Usage Models
+
+### Model 1 – Interval-based (Correctness-first)
+
+Uses real interval data (5-minute or 30-minute) as ground truth.
+
+- Timezone-aware normalization (UTC - local, DST-safe)
+- TOU pricing, demand charges, controlled load
+- Solar feed-in tariff (FIT)
+- Public holiday handling (treated as Sunday)
+- Monthly breakdown and annual totals
+
+### Model 2 – Average-based (Synthetic, v2)
+
+Generates a full 12-month interval profile from average monthly kWh.
+
+- Household profiles (home evenings, home all day, solar, EV)
+- Postcode -> climate zone -> seasonal scaling
+- Controlled load and solar behaviour modelling
+- Attaches assumptions and confidence metadata
+- Produces explainable, estimate-based results
+
+---
+
+## Pricing Engine
+
+Fully modular pricing components:
+
+- Daily supply charge
+- Usage charge (flat / TOU)
+- Demand charge
+- Controlled load (usage + supply)
+- Solar FIT
+- Fees and discounts
+
+Outputs:
+
+- Annual total
+- Monthly breakdown
+- Sensitivity analysis (peak -> off-peak shifting)
+
+---
+
+## Explain Engine (v2)
+
+Explains why a plan is cheaper:
+
+- Cost-based explanations (supply, usage, demand, solar)
+- Assumption-based explanations (climate, profile, synthetic modelling)
+- Ranked and capped explanations to avoid over-claiming
+
+---
+
+## Consumer Data Right (CDR) Integration
+
+- Full retailer brand registry (base URI, brand key, display name)
+- Fetches plan list and plan detail via CDR endpoints
+- Postcode-based geographic filtering (included / excluded rules)
+- Caching and throttling for API stability
+- Retailers can be enabled/disabled via configuration
+
+---
+
+## Recommendation Engine
+
+- Fetches eligible plans by postcode
+- Prices all plans using the same usage model
+- Parallel (Promise-based) pricing for performance
+- Sorts by total cost
+- Returns top 3 cheapest plans with recommendation reasons
+
+
+## Data Flow
+
+### Cost Calculation (`/energy/cost`)
+
+Client request  
+- Usage input (INTERVAL or AVERAGE)  
+- Usage pipeline  
+- Canonical interval usage series  
+- Pricing engine (supply, usage/TOU, demand, solar, controlled load, fees, discounts)  
+- Monthly breakdown + annual totals  
+- Sensitivity analysis (peak - off-peak)  
+- Explain engine (cost-based + assumption-based)  
+- Response
+
+---
+
+### Recommendation (`/energy/recommend`)
+
+Client request (postcode + usage)  
+- Fetch enabled retailers  
+- Fetch CDR plan list  
+- Filter plans by postcode geography  
+- Fetch plan details (cached)  
+- Run usage pipeline (once)  
+- Price all plans in parallel  
+- Sort by total cost  
+- Attach recommendation reasons  
+- Return top 3 plans
+
+
+---
+
+## API Endpoints
+
+### `POST /energy/cost`
+
+Calculates energy cost for a specific plan.
+
+- Supports interval and average usage
+- Returns totals, breakdowns, sensitivity, explanations, assumptions
+
+### `POST /energy/recommend`
+
+Recommends the cheapest plans for a postcode and usage profile.
+
+- Uses live CDR plans
+- Returns ranked plans with reasons
+
+---
+
+## Project Structure (Domain Layer)
+
+```bash
 domain/
-└── usage/
-    usage/
-    ├── model/
-    │   ├── canonical-usage.ts
-    │   └── usage.types.ts
-    │
-    ├── pipeline/
-    │   ├── usage-pipeline.ts        // orchestrate steps
-    │   ├── interval-pipeline.ts     // model 1
-    │   └── average-pipeline.ts      // model 2
-    │
-    ├── synthesize/
-    │   └── synthesize-average.ts
-    │
-    ├── engine/
-    │   └── usage-engine.ts
+├── usage/          # Usage modelling & pipelines (interval + average)
+├── pricing/        # Tariff pricing logic
+├── explain/        # Cost & assumption explanations
+├── plan/           # Canonical plan & tariff models
+├── transform/      # Sensitivity analysis (e.g. peak -> off-peak)
+services/
+├── cdr/            # CDR integration (brands, fetch, cache)
+├── cost/           # /energy/cost API
+├── recommend/      # /energy/recommend API
+├── plans/          # Plan list / plan detail APIs
 
-    ├── normalize/                 # MODEL 1 – interval correctness
-    │   ├── normalize-intervals.ts # UTC → local, DST-safe
-    │   ├── fill-gaps.ts
-    │   └── interval-utils.ts
-
-    ├── calendar/                  # Holiday logic (Model 1)
-    │   ├── holidays.au.ts
-    │   └── apply-holiday.ts
-
-    ├── controlled-load/           # Controlled Load windows
-    │   ├── cl-windows.ts
-    │   └── apply-cl.ts
-
-    ├── solar/                     # Basic solar export shaping (Model 1)
-    │   ├── solar-curve.ts
-    │   └── apply-solar.ts
-
-    ├── seasonality/               # Simple seasonal multipliers
-    │   ├── seasonality.data.ts
-    │   └── apply-seasonality.ts
-
-    ├── templates/                 # Used by Model 2 (not active here)
-    └── generators/                # Used by Model 2 (not active here)
-
-    domain/pricing/
-    ├── tou-charge.ts                 # Time-of-Use pricing (local time)
-    ├── demand-charge.ts              # Demand charge (per day/month)
-    ├── solar-fit.ts                  # Solar feed-in tariff
-    ├── controlled-load-charge.ts
-    ├── controlled-load-supply.ts
-    ├── supply-charge.ts
-    ├── usage-charge.ts
-    ├── resolve-tariff-period.ts      # MM-DD seasonal resolution
-    └── core/
-        ├── allocate-tiered-usage.ts
-        └── tier-accumulator.ts
 ```
 
-### Cloud Deployment (Encore + Cloud Run)
-
-- This project is deployed using Encore.
-- No Dockerfile required
-- No manual gcloud run deploy
-- Encore builds and deploys to Cloud Run automatically
-
-``` bash
-curl -X POST \
-  "https://energy-cost-api-v1-985227244631.australia-southeast1.run.app/energy/cost" \
-  -H "Authorization: bearer $(gcloud auth print-identity-token)" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "retailer": "energyaustralia",
-    "planId": "ENE976986MRE3@EME",
-    "usage": {
-      "mode": "INTERVAL",
-      "intervals": [
-        {
-          "timestamp_start": "2026-01-02T01:00:00Z",
-          "timestamp_end": "2026-01-02T01:30:00Z",
-          "import_kwh": 0.3,
-          "export_kwh": 5,
-          "controlled_import_kwh": 0
-        }
-      ]
-    }
-  }'
-```
-
-### Flow code
+### Testing (curl)
 ```bash
-Recommend API:
-  Usage (proxy)
-  → Simulation
-  → Pricing (coarse)
-  → Ranking + Explanation
-
-Cost API:
-  Usage (full)
-  → Simulation
-  → Pricing (billing-grade)
-  → Monthly / bill breakdown
-```
-
-### Test unit
-```bash
-curl -s -X POST http://localhost:4000/energy/recommend-4w \
-  -H "Content-Type: application/json" \
-  -d @test/recommend-average.json 
-
-curl -s -X POST http://localhost:4000/energy/recommend-fast \
-  -H "Content-Type: application/json" \
-  -d @test/recommend-average.json 
-
+# Cost – Average
 curl -s -X POST http://localhost:4000/energy/cost \
   -H "Content-Type: application/json" \
-  -d @test/cost-average.json 
+  -d @test/cost-average.json
 
-  
+# Cost – Interval
+curl -s -X POST http://localhost:4000/energy/cost \
+  -H "Content-Type: application/json" \
+  -d @test/cost-interval-basic.json
+
 curl -s -X POST http://localhost:4000/energy/cost \
   -H "Content-Type: application/json" \
   -d @test/cost-interval-controlled-load.json
-```
 
+curl -s -X POST http://localhost:4000/energy/cost \
+  -H "Content-Type: application/json" \
+  -d @test/cost-interval-solar.json
+
+# Recommend
+curl -s -X POST http://localhost:4000/energy/recommend \
+  -H "Content-Type: application/json" \
+  -d @test/recommend-average.json
+
+curl -s -X POST http://localhost:4000/energy/recommend \
+  -H "Content-Type: application/json" \
+  -d @test/recommend-interval.json
+```

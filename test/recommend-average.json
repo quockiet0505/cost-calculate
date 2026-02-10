@@ -1,8 +1,10 @@
 {
-  "retailer": "energyaustralia",
+  "postcode": "4000",
   "usage": {
     "mode": "AVERAGE",
-    "averageMonthlyKwh": 300,
-    "averageMonthlyControlledKwh": 50
+    "averageMonthlyKwh": 450,
+    "hasSolar": false,
+    "occupants": 2,
+    "workFromHome": false
   }
 }

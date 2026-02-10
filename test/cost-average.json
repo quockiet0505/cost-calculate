@@ -1,9 +1,11 @@
 {
-     "retailer": "energyaustralia",
-     "planId": "ENE976993MRE3@EME",
-     "usage": {
-       "mode": "AVERAGE",
-       "averageMonthlyKwh": 300,
-        "averageMonthlyControlledKwh": 50
-     }
-   }
+  "retailer": "energyaustralia",
+  "planId": "ENE888447MRE5@EME",
+  "usage": {
+    "mode": "AVERAGE",
+    "averageMonthlyKwh": 450,
+    "hasSolar": false,
+    "occupants": 2,
+    "postcode": "4000"
+  }
+}

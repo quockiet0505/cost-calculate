@@ -1,4 +1,4 @@
-import { CanonicalUsageInterval } from "../../usage/canonical-usage";
+import { CanonicalUsageInterval } from '../model/canonical-usage';
 
 export function getHalfHourIndex(date: Date): number{
      const hours = date.getUTCHours();

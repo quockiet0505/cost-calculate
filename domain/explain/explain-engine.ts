@@ -1,12 +1,17 @@
 import { ExplainItem } from "./explain.types";
 import { EXPLAIN_RULES } from "./explain.rules";
+import { explainAssumptions } from "./explain-assumptions";
+import { ModelAssumptions } from "../usage/model/assumptions.types";
+
 
 export function explainPlan({
   base,
   baseline,
+  assumptions,
 }: {
   base: any;
   baseline: any;
+  assumptions?: ModelAssumptions;
 }): ExplainItem[] {
 
   const explains: ExplainItem[] = [];
@@ -14,7 +19,9 @@ export function explainPlan({
   const b = baseline.componentTotals;
   const c = base.componentTotals;
 
-  //  Supply
+  // v1 – Cost-based explain
+
+  // Supply
   const supplyDiff = b.supply - c.supply;
   if (supplyDiff > EXPLAIN_RULES.SUPPLY_THRESHOLD) {
     explains.push({
@@ -24,7 +31,7 @@ export function explainPlan({
     });
   }
 
-  //  Usage (generic)
+  // Usage
   const usageDiff = b.usage - c.usage;
   if (usageDiff > EXPLAIN_RULES.USAGE_THRESHOLD) {
     explains.push({
@@ -44,7 +51,7 @@ export function explainPlan({
     });
   }
 
-  //  Demand
+  // Demand
   const demandDiff = b.demand - c.demand;
   if (demandDiff > EXPLAIN_RULES.DEMAND_THRESHOLD) {
     explains.push({
@@ -54,7 +61,12 @@ export function explainPlan({
     });
   }
 
-  // sort by impact desc & cap
+  // v2 – Assumption-based explain
+  if (assumptions) {
+    explains.push(...explainAssumptions(assumptions));
+  }  
+
+  // Sort & cap
   return explains
     .sort((a, b) => b.impact - a.impact)
     .slice(0, EXPLAIN_RULES.MAX_ITEMS);

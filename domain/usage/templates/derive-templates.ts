@@ -1,5 +1,5 @@
 
-import type { CanonicalUsageInterval } from "../canonical-usage";
+import type { CanonicalUsageInterval } from "../../usage/model/canonical-usage";
 import { WeeklyLoadTemplate, Weekday } from "./template.types";
 import { getLocalMinutes } from "../../../utils/time";
 

@@ -1,17 +1,14 @@
 {
-     "retailer": "energyaustralia",
-     "planId": "ENE976986MRE3@EME",
-     "usage": {
-       "mode": "INTERVAL",
-       "intervals": [
-         {
-           "timestamp_start": "2026-01-26T01:00:00Z",
-           "timestamp_end": "2026-01-26T01:30:00Z",
-           "import_kwh": 1.0,
-           "export_kwh": 0,
-           "controlled_import_kwh": 0
-         }
-       ]
-     }
-   }
-   
+  "retailer": "energyaustralia",
+  "planId": "ENE888447MRE5@EME",
+  "usage": {
+    "mode": "INTERVAL",
+    "intervals": [
+      {
+        "timestamp_start": "2025-01-26T18:00:00+11:00",
+        "timestamp_end": "2025-01-26T18:30:00+11:00",
+        "import_kwh": 0.4
+      }
+    ]
+  }
+}

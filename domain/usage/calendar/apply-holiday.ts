@@ -1,11 +1,8 @@
 import { isPublicHoliday } from "./holidays.au";
 import { WeeklyLoadTemplate } from "../templates/template.types";
-import { CanonicalUsageInterval } from "../canonical-usage";
+import { CanonicalUsageInterval } from '../model/canonical-usage';
 
-/**
- * Public holiday behaves like Sunday
- * MUST use canonical local fields
- */
+
 export function applyHolidayBehaviour(
   intervals: CanonicalUsageInterval[],
   template: WeeklyLoadTemplate

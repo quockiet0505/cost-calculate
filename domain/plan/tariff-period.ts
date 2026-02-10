@@ -1,5 +1,6 @@
-// define TariffPeriod interface
 export interface TariffPeriod {
+  tou: any;
+  type: string;
   startDate?: string;
   endDate?: string;
 

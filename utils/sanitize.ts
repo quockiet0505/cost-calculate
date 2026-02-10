@@ -1,11 +1,11 @@
 import { safeNumber } from "./number";
 
 export function sanitizeMonthlyBreakdown(
-  mb: Record<string, any>
+  mb?: Record<string, any>
 ): Record<string, any> {
   const out: Record<string, any> = {};
 
-  for (const [month, v] of Object.entries(mb || {})) {
+  for (const [month, v] of Object.entries(mb ?? {})) {
     out[month] = {
       supply: safeNumber(v?.supply),
       usage: safeNumber(v?.usage),

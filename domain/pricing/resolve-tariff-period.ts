@@ -1,28 +1,29 @@
 import { TariffPeriod } from "../plan/tariff-period";
 
+
 export function resolveTariffPeriod(
   periods: TariffPeriod[],
-  // dateInput: string
-  localDate: string // YYYY-MM-DD 
+  localDate: string // YYYY-MM-DD
 ): TariffPeriod {
-  if (!periods?.length) {
-    throw new Error("No tariff periods defined");
+  if (!periods || periods.length === 0) {
+    throw new Error("resolveTariffPeriod: no tariff periods defined");
   }
 
   if (!localDate) {
     throw new Error("resolveTariffPeriod: localDate is undefined");
   }
-  
-  //const localDate = dateInput.substring(0, 10); // YYYY-MM-DD
-  const mmdd = localDate.slice(5);              // MM-DD
+
+  const mmdd = localDate.slice(5); // MM-DD
 
   let bestAbsolute: TariffPeriod | undefined;
   let bestSeasonal: TariffPeriod | undefined;
   let openEnded: TariffPeriod | undefined;
 
   for (const p of periods) {
-    if (isAbsolute(p)) {
+      // 1. Absolute date range
+      if (isAbsolute(p)) {
       if (localDate >= p.startDate! && localDate <= p.endDate!) {
+        // deterministic: latest startDate wins
         if (!bestAbsolute || p.startDate! > bestAbsolute.startDate!) {
           bestAbsolute = p;
         }
@@ -30,40 +31,58 @@ export function resolveTariffPeriod(
       continue;
     }
 
-    if (isSeasonal(p)) {
-      const start = p.startDate!;
-      const end = p.endDate!;
+      // 2. Seasonal (MM-DD → MM-DD)
+      if (isSeasonal(p)) {
+      const start = p.startDate!; // MM-DD
+      const end = p.endDate!;     // MM-DD
 
       const match =
         start <= end
           ? mmdd >= start && mmdd <= end
-          : mmdd >= start || mmdd <= end;
+          : mmdd >= start || mmdd <= end; // wrap-year
 
-      if (match && !bestSeasonal) {
-        bestSeasonal = p;
+      if (match) {
+        // deterministic: latest startDate wins
+        if (!bestSeasonal || start > bestSeasonal.startDate!) {
+          bestSeasonal = p;
+        }
       }
       continue;
     }
 
-    if (!p.startDate && !p.endDate && !openEnded) {
+      // 3. Open-ended fallback
+      if (!p.startDate && !p.endDate && !openEnded) {
       openEnded = p;
     }
   }
 
+  // Precedence resolution
   if (bestAbsolute) return bestAbsolute;
   if (bestSeasonal) return bestSeasonal;
   if (openEnded) return openEnded;
 
-  // safety net: periods already sorted, so last one is least specific
-  return periods[periods.length - 1];
+  // Gap = data or logic error
+  throw new Error(
+    `resolveTariffPeriod: no matching tariff period for localDate=${localDate}`
+  );
 }
 
-
 // Helpers
+
 function isAbsolute(p: TariffPeriod): boolean {
-  return !!(p.startDate && p.endDate && p.startDate.length >= 10);
+  return Boolean(
+    p.startDate &&
+    p.endDate &&
+    p.startDate.length >= 10 && // YYYY-MM-DD
+    p.endDate.length >= 10
+  );
 }
 
 function isSeasonal(p: TariffPeriod): boolean {
-  return !!(p.startDate && p.endDate && p.startDate.length === 5);
+  return Boolean(
+    p.startDate &&
+    p.endDate &&
+    p.startDate.length === 5 && // MM-DD
+    p.endDate.length === 5
+  );
 }

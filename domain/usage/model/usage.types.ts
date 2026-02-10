@@ -1,4 +1,3 @@
-
 export type UsageMode = "AVERAGE" | "INTERVAL";
 
 // usage input interval validation
@@ -13,7 +12,20 @@ export interface UsageIntervalInput {
 // usage input for calculation
 export interface UsageInput {
   mode: UsageMode;
+
   averageMonthlyKwh?: number;
   averageMonthlyControlledKwh?: number;
   intervals?: UsageIntervalInput[];
+
+  hasEV?: boolean;
+  hasSolar?: boolean;
+  hasBattery?: boolean;
+  hasControlledLoad?: boolean;
+  hasPool?: boolean;
+
+  workFromHome?: boolean;
+  householdType?: "APARTMENT" | "HOUSE";
+  occupants?: number;
+
+  postcode?: string;
 }
